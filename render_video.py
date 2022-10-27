@@ -64,7 +64,8 @@ class TrajectoryRenderer:
         self._ax.set_ylim([self._min_y, self._max_y])
 
         self._ax.set_title(
-            f"{self._filename.resolve()}\nTime = {str(round(self._times[time_idx], 3)).ljust(5, '0')}"
+            f"{self._filename.resolve()}\n"
+            + f"Time = {str(round(self._times[time_idx], 3)).ljust(5, '0')}"
         )
 
         circles = []
