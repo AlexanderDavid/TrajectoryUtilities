@@ -1,4 +1,4 @@
-from dataset import Agent, Position
+from .dataset import Position
 import numpy as np
 
 def ttca(agent: Position, obstacle: Position) -> float:
@@ -37,13 +37,13 @@ def mpd(agent: Position, obstacle: Position) -> float:
     Returns:
         float: Point-to-point minimum predicted distance 
     """
-    ttca = ttca(agent, obstacle)
-
-    if ttca < 0:
-        return float("inf")
-
+    ttca_val = ttca(agent, obstacle)
     p_o_a = obstacle.pos - agent.pos
+
+    if ttca_val < 0:
+        return np.linalg.norm(p_o_a)
+
     v_o_a = obstacle.vel - agent.vel
-    dca = np.linalg.norm(p_o_a + max(0, ttca) * v_o_a)
+    dca = np.linalg.norm(p_o_a + max(0, ttca_val) * v_o_a)
 
     return float(dca)
