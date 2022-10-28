@@ -8,7 +8,7 @@ import numpy as np
 from matplotlib import pyplot as plt #type: ignore
 import pandas as pd
 
-from abstract import Dataset, Agent, Position
+from .abstract import Dataset, Agent, Position
 
 COLORS_MAP = {
     -1: "#000000",
