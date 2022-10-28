@@ -23,7 +23,7 @@ class Agent:
         self.positions: List[Position] = []
 
     def __repr__(self):
-        return f"{self.agent.idx=} w/ {len(self.positions)=}"
+        return f"{self.idx=} w/ {len(self.positions)=}"
 
 class Dataset(ABC):
     @property
