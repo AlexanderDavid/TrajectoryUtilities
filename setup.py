@@ -7,8 +7,8 @@ with open('LICENSE') as f:
     license = f.read()
 
 setup(
-    name='traj_utils',
-    version='0.0.0',
+    name="ardi",
+    version="0.0.0",
     description="Library and tools for operating on pedestrian trajectories",
     long_description=readme,
     author="Alex Day",

@@ -45,6 +45,28 @@ class Dataset(ABC):
         """Return a list of all times that are valid in the trajectory
         """
 
+    @property
+    def extents(self) -> Tuple[float, float, float, float]:
+        """Return the minimum and maximum along x and y axis for all positions over all time.
+        In format of (xmin xmax ymin ymax)
+        """
+        min_x = float("inf")
+        min_y = float("inf")
+        max_x = float("-inf")
+        max_y = float("-inf")
+
+        for idx in self.agents:
+            xs = [x.pos[0] for x in self.agents[idx].positions]
+            ys = [x.pos[1] for x in self.agents[idx].positions]
+
+            min_x = min(min_x, min(xs))
+            max_x = max(max_x, max(xs))
+
+            min_y = min(min_y, min(ys))
+            max_y = max(max_y, max(ys))
+
+        return min_x, max_x, min_y, max_y
+
     def get_positions(self, time: float) -> Dict[int, Tuple[Position, Agent]]:
         """Return a dictionary mapping the index to a tuple of a specific position and the agent's information
         for all of all agents that are in the trajectory at a given time

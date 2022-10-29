@@ -1,5 +1,5 @@
-from traj_utils import metrics
-from traj_utils.dataset import Position
+from ardi import metrics
+from ardi.dataset import Position
 
 import numpy as np
 import unittest

@@ -1,5 +1,5 @@
-from traj_utils import metrics
-from traj_utils.dataset import ZuckerDataset
+from ardi import metrics
+from ardi.dataset import ZuckerDataset
 
 import numpy as np
 
