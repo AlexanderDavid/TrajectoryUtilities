@@ -8,6 +8,7 @@ pandas = "*"
 matplotlib = "*"
 seaborn = "*"
 pytest = "*"
+torch = "*"
 
 [dev-packages]
 pre-commit = "*"

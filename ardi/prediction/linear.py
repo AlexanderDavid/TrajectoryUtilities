@@ -1,22 +1,24 @@
-from .abstract import Predictor, SubTrajectory, VelocityCalc
-from ..dataset import Position
-from typing import Dict
+from .abstract import Predictor, VelocityCalc
+from ..dataset import Position, Agent
+from typing import List
 from abc import abstractmethod
 
 class LinearPredictor(Predictor):
-    @abstractmethod
-    def predict(self, ego_history: SubTrajectory, neighbor_history: Dict[int, SubTrajectory], frames: int,
-                velocity_calc_method: VelocityCalc) -> SubTrajectory:
-        ts = ego_history[0][1].time - ego_history[1][1].time
+    def __init__(self, frames: int, velocity_calc_method: VelocityCalc):
+        super().__init__(frames, velocity_calc_method)
 
-        velocity = Predictor.calc_velocity(velocity_calc_method)
+    def predict(self, ego_history: Agent, neighbors_history: List[Agent]) -> List[List[Position]]:
+        positions = ego_history.positions
+        ts = positions[1].time - positions[0].time
 
-        prediction = [
+        velocity = Predictor.calc_velocity(positions, self._velocity_calc_method)
+
+        predictions = [
             Position(
-                ego_history[0][-1].pos + i * velocity,
-                None,
-                ego_history[0][-1].time + i * ts
-            ) for i in range(1, len(neighbor_history) + 1)
+                positions[-1].pos + i * velocity,
+                velocity,
+                positions[-1].time + i * ts
+            ) for i in range(1, self._frames + 1)
         ]
 
-        return prediction, ego_history[1]
+        return [predictions]

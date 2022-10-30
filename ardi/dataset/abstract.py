@@ -10,6 +10,9 @@ class Position:
     pos: np.ndarray
     vel: np.ndarray
     time: float
+    
+    def __eq__(self, __o: object) -> bool:
+        return np.allclose(__o.pos, self.pos) and np.allclose(__o.vel, self.vel) and __o.time == self.time
 
 class Agent:
     def __init__(self, agent_idx: int, label: str, radius: float, goal: np.ndarray, color: Optional[str]=None, height: Optional[float]=None):

@@ -5,11 +5,6 @@ from typing import List, Tuple, Dict
 
 import numpy as np
 
-# This denotes some sub-path in a larger trajectory as well as agent
-# meta information. Need to come up with a new type name because this
-# doesn't really capture that it has meta information
-SubTrajectory = Tuple[List[Position], Agent]
-
 class VelocityCalc(Enum):
     LAST_GROUND_TRUTH = 1
     AVERAGE_GROUND_TRUTH  = 2
@@ -17,40 +12,38 @@ class VelocityCalc(Enum):
     AVERAGE_DISPLACEMENT = 4
 
 class Predictor(ABC):
+    def __init__(self, frames: int, velocity_calc_method: VelocityCalc):
+        self._frames = frames
+        self._velocity_calc_method = velocity_calc_method
+        
     @abstractmethod
-    def predict(self, ego_history: SubTrajectory, neighbor_history: Dict[int, SubTrajectory], frames: int,
-                velocity_calc_method: VelocityCalc) -> SubTrajectory:
-        """Generate frames timesteps into the future with some prediction algorithm
+    def predict(self, ego_history: Agent, neighbors_history: List[Agent]) -> List[List[Position]]:
+        """Predict ego trajectory into the future
 
         Args:
-            ego_history (SubTrajectory): previous ego motion
-            neighbor_history (Dict[int, SubTrajectory]): previous neighbor motion
-            frames (int): number of frames to predict into the future
-            velocity_calc_method (VelocityCalc): methods used to calculate velocity if that is needed
-                                                 for the algorithm
+            ego_history (Agent): ego agent with the history in the positions field
+            neighbors_history (List[Agent]): neighbors with the history in the positions field
+
         Returns:
-            SubTrajectory: predicted future trajectory
+            List[Position]: prediction for the ego agent
         """
 
-    def predict_ade_fde(self, ego_history: SubTrajectory, neighbor_history: Dict[int, SubTrajectory], ego_truth: SubTrajectory,
-                        frames: int, velocity_calc_method: VelocityCalc) -> Tuple[float, float]:
+    def predict_ade_fde(self, ego_history: Agent, ego_truth: Agent, neighbors_history: List[Agent]) -> Tuple[float, float]:
         """Generate frames timesteps into the future with some prediction algorithm and then calculate
         the ADE and FDE of that prediction
 
         Args:
-            ego_history (SubTrajectory): previous ego motion
-            neighbor_history (Dict[int, SubTrajectory]): previous neighbor motion
-            ego_truth (SubTrajectory): Actual ground truth motion the ego agent took
-            frames (int): number of frames to predict into the future
-            velocity_calc_method (VelocityCalc): methods used to calculate velocity if that is needed
-                                                 for the algorithm
+            ego_history (Agent): previous ego motion
+            neighbor_history (List[Agent]): previous neighbor motion
+            ego_truth (Agent): Actual ground truth motion the ego agent took
+
         Returns:
             Tuple[float, float]: Average displacement error, final displacement error
         """
 
-        predicted = self.predict(ego_history, neighbor_history, frames, velocity_calc_method)
+        predicted = self.predict(ego_history, neighbors_history)
 
-        difference = predicted - ego_truth
+        difference = np.array([x.pos for x in predicted]) - np.array([x.pos for x in ego_truth.positions])
         distance = np.linalg.norm(difference, axis=1)
 
         return np.linalg.mean(distance), distance[-1]
