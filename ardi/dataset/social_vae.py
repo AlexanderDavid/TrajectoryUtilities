@@ -1,30 +1,59 @@
 from typing import Dict, List
-from .abstract import Dataset, Agent
+from .abstract import Dataset, Agent, Position
 
 import numpy as np
+
 
 class SocialVAEDataset(Dataset):
     def __init__(self, data_filename: str):
         # Read the data in from the CSV
-        self._data = np.loadtxt(data_filename, delimiter=" ")
+        self._data = np.loadtxt(data_filename, delimiter=" ", dtype=str)
         self._filename = data_filename
-        
+
+        # Gather the agent numbers
+        self._idxs = list(map(int, set(self._data[:, 1])))
+
+        # Set up the base data structure of the dataset
+        self._agents: Dict[int, Agent] = {}
+        self._times: List[float] = np.unique(self._data[:, 0]).astype(float)
+        self._timestep = self._times[1] - self._times[0]
+
+        # Read through all of the trajectories for each individual agent
+        for idx in self._idxs:
+            agent_data = self._data[[int(datum[1]) == idx for datum in self._data]]
+
+            # Agent goal should always be the last position
+            goal = agent_data[-1][2:4].astype(float)
+
+            # Create the agent
+            t = Agent(idx, agent_data[0][4], None, goal)
+
+            # Get the positions and velocities into the positions array
+            poss = agent_data[:, 2:4].astype(float)
+            vels = np.vstack((np.zeros(2), (poss[:-1] - poss[1:])))
+            times = agent_data[:, 0].astype(float)
+
+            for pos, vel, time in zip(poss, vels, times):
+                t.positions.append(Position(pos, -vel / self._timestep, time))
+
+            self.agents[idx] = t
 
     @property
     def agents(self) -> Dict[int, Agent]:
-        """Return a dictionary containing a map between agent index and 
-           that agent's information
+        """Return a dictionary containing a map between agent index and
+        that agent's information
         """
+        return self._agents
 
     @property
     def timestep(self) -> float:
-        """Return the difference between any two successive points in the dataset
-        """
+        """Return the difference between any two successive points in the dataset"""
+        return self._timestep
 
     @property
     def times(self) -> List[float]:
-        """Return a list of all times that are valid in the trajectory
-        """
+        """Return a list of all times that are valid in the trajectory"""
+        return self._times
 
     def frameskip(self, skip: int) -> None:
         """In place frameskip the dataset.
@@ -32,3 +61,4 @@ class SocialVAEDataset(Dataset):
         Args:
             skip (int): number of frames to skip
         """
+        raise NotImplementedError()
