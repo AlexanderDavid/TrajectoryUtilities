@@ -4,6 +4,8 @@ from ..dataset import Position, Agent
 from typing import List, Tuple, Dict
 
 import numpy as np
+from matplotlib import pyplot as plt
+from matplotlib import patheffects as mpe
 
 class VelocityCalc(Enum):
     LAST_GROUND_TRUTH = 1
@@ -28,25 +30,68 @@ class Predictor(ABC):
             List[Position]: prediction for the ego agent
         """
 
-    def predict_ade_fde(self, ego_history: Agent, ego_truth: Agent, neighbors_history: List[Agent]) -> Tuple[float, float]:
-        """Generate frames timesteps into the future with some prediction algorithm and then calculate
-        the ADE and FDE of that prediction
+    @staticmethod
+    def ade_fde(ego_truth: List[Position], ego_preds: List[List[Position]]) -> Tuple[float, float]:
+        """Calculate the Average Displacement Error or Final Displacement Erorr
 
         Args:
-            ego_history (Agent): previous ego motion
-            neighbor_history (List[Agent]): previous neighbor motion
-            ego_truth (Agent): Actual ground truth motion the ego agent took
+            ego_truth (List[Position]): ground truth
+            ego_pred (List[List[Position]]): list of predicted vels
 
         Returns:
-            Tuple[float, float]: Average displacement error, final displacement error
+            Tuple[float, float]: ADE, FDE
         """
 
-        predicted = self.predict(ego_history, neighbors_history)
+        ade = np.inf
+        fde = np.inf
+        
+        truth = np.array([x.pos for x in ego_truth])
+        for pred in ego_preds:
+            p = np.array([x.pos for x in pred])
 
-        difference = np.array([x.pos for x in predicted]) - np.array([x.pos for x in ego_truth.positions])
-        distance = np.linalg.norm(difference, axis=1)
+            dists = [np.linalg.norm(x) for x in truth - p]
+            
+            ade = min(ade, np.mean(dists))
+            fde = min(fde, dists[-1])
 
-        return np.linalg.mean(distance), distance[-1]
+        return ade, fde
+            
+
+    @staticmethod
+    def plot(ego_obs: List[Position], neighbors_obs: List[List[Position]], ego_truth: List[Position], neighbors_truth: List[List[Position]],
+             predictions: List[List[Position]]):
+        ground_truth_pos = np.array([p.pos for p in ego_obs])
+
+        plt.gca().set_aspect('equal')
+
+        plt.plot(
+            [x.pos[0] for x in ego_obs], [x.pos[1] for x in ego_obs], color="b", alpha=0.65,
+            marker="o", markersize=3.2, linewidth=2.25,
+            path_effects=[mpe.Stroke(linewidth=3, foreground='k', alpha=0.65), mpe.Normal()]
+        )
+
+        for pred in predictions:
+            plt.plot(
+                [p.pos[0] for p in pred], [p.pos[1] for p in pred], color="y", alpha=0.65, marker="o",
+                markersize=3.2, linewidth=2.25, path_effects=[mpe.Stroke(linewidth=3, foreground='k', alpha=0.65), mpe.Normal()]
+            )
+
+        plt.plot(
+            [p.pos[0] for p in ego_truth], [p.pos[1] for p in ego_truth], color="r", alpha=0.65, marker="o",
+            markersize=3.2, linewidth=2.25, path_effects=[mpe.Stroke(linewidth=3, foreground='k', alpha=0.65), mpe.Normal()]
+        )
+
+
+
+        for neighbor_obs, neighbor_truth in zip(neighbors_obs, neighbors_truth):
+            plt.plot(
+                [x.pos[0] for x in neighbor_obs], [x.pos[0] for x in neighbor_obs], color="g", alpha=0.65, marker="o",
+                markersize=3.2, linewidth=2.25, path_effects=[mpe.Stroke(linewidth=3, foreground='k', alpha=0.65), mpe.Normal()])
+
+            plt.plot(
+                [x.pos[0] for x in neighbor_truth], [x.pos[0] for x in neighbor_truth], color="g", alpha=0.5, marker="o",
+                markersize=3.2, linewidth=2.25, linestyle='dashed', path_effects=[mpe.Stroke(linewidth=3, foreground='k', alpha=0.65), mpe.Normal()]
+            )
     
     @staticmethod
     def calc_velocity(poss: List[Position], method: VelocityCalc=VelocityCalc.LAST_GROUND_TRUTH):

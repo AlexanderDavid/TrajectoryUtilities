@@ -115,6 +115,13 @@ class ZuckerDataset(Dataset):
     def times(self):
         return self._times
 
+    def frameskip(self, skip: int) -> None:
+        self._times = self._times[::skip]
+        self._timestep *= skip
+
+        for idx in self._agents:
+            self._agents[idx].positions = self._agents[idx].positions[::skip]
+
 @dataclass
 class ZuckerScenario:
     agent_type: str

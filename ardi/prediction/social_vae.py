@@ -46,8 +46,8 @@ class SocialVAEPredictor(Predictor):
             ))
 
         if len(neighbor_numpy):
-            # neighbor_numpy = np.hstack(neighbor_numpy).reshape(len(neighbors_history), -1, 6)
-            neighbor_numpy = np.hstack(neighbor_numpy).reshape(4, 1,  6)
+            neighbor_numpy = np.hstack(neighbor_numpy).reshape(len(ego_history.positions), len(neighbors_history), 6)
+            # neighbor_numpy = np.hstack(neighbor_numpy).reshape(4, 1,  6)
             neighbor_tensor = torch.from_numpy(neighbor_numpy).to(torch.float32).unsqueeze(1)
         else:
             neighbor_numpy = np.zeros((len(neighbors_history), 0, 6))
@@ -59,12 +59,6 @@ class SocialVAEPredictor(Predictor):
             )
         ).to(torch.float32).unsqueeze(1)
 
-        print("!!!")
-        # print(ego_tensor.shape)
-        # print(ego_tensor)
-        # print(neighbor_tensor.shape)
-        # print(neighbor_tensor)
-
         preds = self._model(ego_tensor, neighbor_tensor, n_predictions=2000).squeeze(2).detach().cpu().numpy()
         preds = preds[SocialVAE.FPC(preds, n_samples=self._n_predictions)]
 
@@ -73,12 +67,3 @@ class SocialVAEPredictor(Predictor):
             poss.append([Position(p, np.array([0, 0]), 0) for p in pred])
 
         return poss
-        
-
-        # true_poss = np.array([x.pos for x in ego_history.positions])
-        # print(pred)
-        # print(true_poss)
-        # print("!!!")
-        # ade, fde = SocialVAE.ADE_FDE(np.expand_dims(pred, -2), np.expand_dims(true_poss, -2))
-
-        # return min(ade)[0], min(fde)[0]
