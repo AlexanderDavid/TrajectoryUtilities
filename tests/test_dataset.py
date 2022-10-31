@@ -1,4 +1,3 @@
-from ardi import metrics
 from ardi.dataset import ZuckerDataset, SocialVAEDataset
 
 import numpy as np
