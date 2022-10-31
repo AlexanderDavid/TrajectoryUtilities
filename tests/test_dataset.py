@@ -47,6 +47,14 @@ class TestZuckerDataset(unittest.TestCase):
         self.assertEqual(poss[3][0].pos.tolist(), [6.40716, 1.426972])
         self.assertEqual(poss[4][0].pos.tolist(), [6.378485, 2.262925])
 
+    def test_prune_start_speed(self):
+        self.data.prune_start_speed(1.0)
+        self.assertEqual(len(self.data.times), 402)
+
+    def test_prune_goal_radius(self):
+        self.data.prune_goal_radius(5.0)
+        self.assertEqual(len(self.data.times), 330)
+
 
 if __name__ == "__main__":
     unittest.main()

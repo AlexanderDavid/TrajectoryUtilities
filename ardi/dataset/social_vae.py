@@ -24,9 +24,10 @@ class SocialVAEDataset(Dataset):
 
             # Agent goal should always be the last position
             goal = agent_data[-1][2:4].astype(float)
+            start = agent_data[0][2:4].astype(float)
 
             # Create the agent
-            t = Agent(idx, agent_data[0][4], None, goal)
+            t = Agent(idx, agent_data[0][4], None, goal, start)
 
             # Get the positions and velocities into the positions array
             poss = agent_data[:, 2:4].astype(float)
@@ -51,14 +52,30 @@ class SocialVAEDataset(Dataset):
         return self._timestep
 
     @property
-    def times(self) -> List[float]:
-        """Return a list of all times that are valid in the trajectory"""
+    def times(self) -> float:
         return self._times
 
     def frameskip(self, skip: int) -> None:
-        """In place frameskip the dataset.
+        self._times = self._times[::skip]
+        self._timestep *= skip
 
-        Args:
-            skip (int): number of frames to skip
-        """
-        raise NotImplementedError()
+        for idx in self._agents:
+            self._agents[idx].positions = [
+                x for x in self._agents[idx].positions if x.time in self._times
+            ]
+
+    def trim_start(self, trim: int) -> None:
+        self._times = self._times[trim:]
+
+        for idx in self._agents:
+            self._agents[idx].positions = [
+                x for x in self._agents[idx].positions if x.time in self._times
+            ]
+
+    def trim_end(self, trim: int) -> None:
+        self._times = self._times[:-trim]
+
+        for idx in self._agents:
+            self._agents[idx].positions = [
+                x for x in self._agents[idx].positions if x.time in self._times
+            ]

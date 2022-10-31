@@ -5,17 +5,12 @@ from typing import List, Dict, Union, Tuple
 import csv
 
 import numpy as np
-from matplotlib import pyplot as plt #type: ignore
+from matplotlib import pyplot as plt  # type: ignore
 import pandas as pd
 
 from .abstract import Dataset, Agent, Position
 
-COLORS_MAP = {
-    -1: "#000000",
-    0: "#ff0000",
-    1: "#00ff00",
-    2: "#0000ff"
-}
+COLORS_MAP = {-1: "#000000", 0: "#ff0000", 1: "#00ff00", 2: "#0000ff"}
 
 RADIUS_MAP = {
     -1: 0.354 / 2,
@@ -27,7 +22,7 @@ RADIUS_MAP = {
     5: 0.4064 / 2,
     6: 0.4064 / 2,
     7: 0.4826 / 2,
-    8: 0.4318 / 2
+    8: 0.4318 / 2,
 }
 
 HEIGHT_MAP = {
@@ -40,12 +35,18 @@ HEIGHT_MAP = {
     5: 1.6256,
     6: 1.6256,
     7: 1.8796,
-    8: 1.7272
+    8: 1.7272,
 }
-    
+
 
 class ZuckerDataset(Dataset):
-    def __init__(self, data_filename: str, robot_idx: int=None, ttca_eps: float=0.05, start_speed: float=None):
+    def __init__(
+        self,
+        data_filename: str,
+        robot_idx: int = None,
+        ttca_eps: float = 0.05,
+        start_speed: float = None,
+    ):
         """Load a trajectory and optionally trim based on ttca and minimum speed
 
         Args:
@@ -57,7 +58,9 @@ class ZuckerDataset(Dataset):
         try:
             self._idx = int(Path(data_filename).stem)
         except Exception:
-            print(f"dataset: cannot parse filename ({data_filename}) to find scenario index")
+            print(
+                f"dataset: cannot parse filename ({data_filename}) to find scenario index"
+            )
             self._idx = -1
 
         # Read the data in from the CSV
@@ -83,8 +86,16 @@ class ZuckerDataset(Dataset):
                 goal = agent_data[0][4:]
 
             # Create the agent
-            t = Agent(idx, str(idx) if idx != -1 else "robot", RADIUS_MAP[idx], goal, COLORS_MAP[idx % 2 if idx != -1 else -1], HEIGHT_MAP[idx])
-            
+            t = Agent(
+                idx,
+                str(idx) if idx != -1 else "robot",
+                RADIUS_MAP[idx],
+                goal,
+                agent_data[0][2:4],
+                COLORS_MAP[idx % 2 if idx != -1 else -1],
+                HEIGHT_MAP[idx],
+            )
+
             # Get the positions and velocities into the positions array
             poss = agent_data[:, 2:4]
             vels = np.vstack((np.zeros(2), (poss[:-1] - poss[1:])))
@@ -98,7 +109,7 @@ class ZuckerDataset(Dataset):
     @property
     def filename(self):
         return self._filename
-    
+
     @property
     def id(self):
         return self._idx
@@ -120,7 +131,26 @@ class ZuckerDataset(Dataset):
         self._timestep *= skip
 
         for idx in self._agents:
-            self._agents[idx].positions = self._agents[idx].positions[::skip]
+            self._agents[idx].positions = [
+                x for x in self._agents[idx].positions if x.time in self._times
+            ]
+
+    def trim_start(self, trim: int) -> None:
+        self._times = self._times[trim:]
+
+        for idx in self._agents:
+            self._agents[idx].positions = [
+                x for x in self._agents[idx].positions if x.time in self._times
+            ]
+
+    def trim_end(self, trim: int) -> None:
+        self._times = self._times[:-trim]
+
+        for idx in self._agents:
+            self._agents[idx].positions = [
+                x for x in self._agents[idx].positions if x.time in self._times
+            ]
+
 
 @dataclass
 class ZuckerScenario:
@@ -129,6 +159,7 @@ class ZuckerScenario:
     required: bool
 
     participants: List[int] = field(default_factory=list)
+
 
 class ZuckerDatasetMap:
     def __init__(self, map_filename: str):
@@ -139,15 +170,17 @@ class ZuckerDatasetMap:
         """
         self._map = {}
         rdr = csv.reader(open(map_filename), delimiter=",", quotechar='"')
-        next(rdr) # Skip the header
+        next(rdr)  # Skip the header
         for row in rdr:
-            if row[2][-1] == " ": row[2] = row[2][:-1]
-            if row[3][-1] == " ": row[3] = row[3][:-1]
+            if row[2][-1] == " ":
+                row[2] = row[2][:-1]
+            if row[3][-1] == " ":
+                row[3] = row[3][:-1]
             self._map[int(row[1])] = ZuckerScenario(
                 row[2],
                 row[3],
                 row[5] == "Y",
-                list(map(int, row[4].replace(" ", "").split(",")))
+                list(map(int, row[4].replace(" ", "").split(","))),
             )
 
     def keys(self) -> KeysView:
@@ -157,7 +190,7 @@ class ZuckerDatasetMap:
             List[int]: List of numerical keys
         """
         return self._map.keys()
-    
+
     def __getitem__(self, key: Union[int, Dataset]) -> ZuckerScenario:
         """Index the map and return meta information about that scenario
 
@@ -176,22 +209,28 @@ class ZuckerDatasetMap:
             else:
                 raise KeyError(key.id)
 
-        return self._map[key] #type: ignore
+        return self._map[key]  # type: ignore
 
     def get_meta_map(self, root: str) -> pd.DataFrame:
         data = []
         for fn in Path(root).glob("**/*csv"):
-            if "map" in str(fn): continue
-            if int(fn.stem) not in self.keys(): continue
+            if "map" in str(fn):
+                continue
+            if int(fn.stem) not in self.keys():
+                continue
 
             datum = self[int(fn.stem)]
-            data.append({
-                "filename": fn,
-                "id": int(fn.stem),
-                "agent_type": datum.agent_type,
-                "controller": "human" if datum.agent_type.isnumeric() else datum.agent_type,
-                "scene": datum.scene,
-                "order": datum.participants
-            })
+            data.append(
+                {
+                    "filename": fn,
+                    "id": int(fn.stem),
+                    "agent_type": datum.agent_type,
+                    "controller": "human"
+                    if datum.agent_type.isnumeric()
+                    else datum.agent_type,
+                    "scene": datum.scene,
+                    "order": datum.participants,
+                }
+            )
 
         return pd.DataFrame(data)
