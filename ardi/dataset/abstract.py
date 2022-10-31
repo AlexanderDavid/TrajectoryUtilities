@@ -70,6 +70,14 @@ class Dataset(ABC):
 
         return min_x, max_x, min_y, max_y
 
+    @abstractmethod
+    def frameskip(self, skip: int) -> None:
+        """In place frameskip the dataset.
+
+        Args:
+            skip (int): number of frames to skip
+        """
+
     def get_positions(self, time: float) -> Dict[int, Tuple[Position, Agent]]:
         """Return a dictionary mapping the index to a tuple of a specific position and the agent's information
         for all of all agents that are in the trajectory at a given time
