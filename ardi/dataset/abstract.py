@@ -48,6 +48,14 @@ class Dataset(ABC):
         """Return a list of all times that are valid in the trajectory
         """
 
+    @abstractmethod
+    def frameskip(self, skip: int) -> None:
+        """In place frameskip the dataset.
+
+        Args:
+            skip (int): number of frames to skip
+        """
+
     @property
     def extents(self) -> Tuple[float, float, float, float]:
         """Return the minimum and maximum along x and y axis for all positions over all time.
@@ -69,14 +77,6 @@ class Dataset(ABC):
             max_y = max(max_y, max(ys))
 
         return min_x, max_x, min_y, max_y
-
-    @abstractmethod
-    def frameskip(self, skip: int) -> None:
-        """In place frameskip the dataset.
-
-        Args:
-            skip (int): number of frames to skip
-        """
 
     def get_positions(self, time: float) -> Dict[int, Tuple[Position, Agent]]:
         """Return a dictionary mapping the index to a tuple of a specific position and the agent's information
