@@ -1,9 +1,21 @@
 from ardi import metrics
-from ardi.dataset import ZuckerDataset
+from ardi.dataset import ZuckerDataset, SocialVAEDataset
 
 import numpy as np
 
 import unittest
+
+class TestSocialVAEDataset(unittest.TestCase):
+    def setUp(self) -> None:
+        self.data = SocialVAEDataset(
+            "./tests/sample_data/socialvae.txt"
+        )
+        return super().setUp()
+
+    def test_length(self):
+        self.assertEqual(len(self.data.times), 21)
+
+    
 
 class TestZuckerDataset(unittest.TestCase):
     def setUp(self) -> None:
