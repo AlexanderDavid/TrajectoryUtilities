@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from enum import Enum
 from ..dataset import Position, Agent
-from typing import List, Tuple, Dict
+from typing import List, Optional, Tuple, Dict
 
 import numpy as np
 from matplotlib import pyplot as plt
@@ -13,6 +13,13 @@ class VelocityCalc(Enum):
     AVERAGE_GROUND_TRUTH = 2
     LAST_DISPLACEMENT = 3
     AVERAGE_DISPLACEMENT = 4
+
+
+class PrefVelocityCalc(Enum):
+    FIX_MAG_ORACLE_DIR = 1
+    FIX_MAG_INFER_DIR = 2
+    INFER_MAG_ORACLE_DIR = 3
+    INFER_MAG_INFER_DIR = 4
 
 
 class Predictor(ABC):
@@ -148,7 +155,22 @@ class Predictor(ABC):
     @staticmethod
     def calc_velocity(
         poss: List[Position], method: VelocityCalc = VelocityCalc.LAST_GROUND_TRUTH
-    ):
+    ) -> np.ndarray:
+        """Calculate the velocity for an agent over a path
+
+        Args:
+            poss (List[Position]): History of the agent
+            method (VelocityCalc, optional): Method of calculation to use. Either use the
+                                             LAST or AVERAGE values for either the GROUND_TRUTH (velocity
+                                             from each position) or DISPLACEMENT (infer velocity from difference
+                                             between positions) . Defaults to VelocityCalc.LAST_GROUND_TRUTH.
+
+        Raises:
+            ValueError: If method is not a VelocityCalc
+
+        Returns:
+            np.ndarray: Calculated velocity
+        """
         if method == VelocityCalc.LAST_GROUND_TRUTH:
             return poss[-1].vel
 
@@ -156,7 +178,7 @@ class Predictor(ABC):
             return np.mean([p.vel for p in poss], axis=0)
 
         if method == VelocityCalc.LAST_DISPLACEMENT:
-            return poss[-1].pos - poss[-2].pos
+            return (poss[-1].pos - poss[-2].pos) / (poss[1].time - poss[0].time)
 
         if method == VelocityCalc.AVERAGE_DISPLACEMENT:
             positions = np.array([p.pos for p in poss])
@@ -166,3 +188,58 @@ class Predictor(ABC):
             return np.mean(displacements, axis=0)
 
         raise ValueError("method must be a valid VelocityCalculation")
+
+    @staticmethod
+    def calc_pref_velocity(
+        poss: List[Position],
+        ego: Agent,
+        pref_method: PrefVelocityCalc = PrefVelocityCalc.FIX_MAG_ORACLE_DIR,
+        vel_method: VelocityCalc = VelocityCalc.LAST_DISPLACEMENT,
+        fixed_mag: float = 1.3,
+        current_pos: Optional[Position] = None,
+    ) -> np.ndarray:
+        """Calculate the preferred velocity of an agent.
+
+        Args:
+            poss (List[Position]): History of the agent, used if the direction or magnitude ore inferred
+            ego (Agent): Agent to calculate the preferred velocity of
+            pref_method (PrefVelocityCalc, optional): Method of calculating the preferred velocity. There is a choice
+                                                      between either fixing or inferring both the magnitude and direction.
+                                                      A fixed magnitude will set the magnitude to some default, where inferring
+                                                      it will use the velocity calculation method to get this value. Similar for
+                                                      the direction. Defaults to PrefVelocityCalc.FIX_MAG_ORACLE_DIR.
+            vel_method (VelocityCalc, optional): Method for calculating the velocity when inferring the pref speed from historical data.
+                                                 Defaults to VelocityCalc.LAST_DISPLACEMENT.
+            fixed_mag (float, optional): Fixed magnitude to use. Defaults to 1.3.
+            current_pos (Optional[Position], optional): Current position if the oracle is used for the direction. Defaults to None.
+
+        Returns:
+            np.ndarray: Preferred speed for ego agent
+        """
+        if current_pos is None:
+            current_pos = poss[-1]
+
+        if pref_method == PrefVelocityCalc.FIX_MAG_ORACLE_DIR:
+            pref_vel = ego.goal - current_pos.pos
+            pref_vel /= np.linalg.norm(pref_vel)
+            pref_vel *= fixed_mag
+
+            return pref_vel
+
+        if pref_method == PrefVelocityCalc.FIX_MAG_INFER_DIR:
+            pref_vel = Predictor.calc_velocity(poss, vel_method)
+
+            pref_vel /= np.linalg.norm(pref_vel)
+            pref_vel *= fixed_mag
+
+            return pref_vel
+
+        if pref_method == PrefVelocityCalc.INFER_MAG_ORACLE_DIR:
+            pref_vel = ego.goal - current_pos.pos
+            pref_vel /= np.linalg.norm(pref_vel)
+            pref_vel *= np.linalg.norm(Predictor.calc_velocity(poss, vel_method))
+
+            return pref_vel
+
+        if pref_method == PrefVelocityCalc.INFER_MAG_INFER_DIR:
+            return Predictor.calc_velocity(poss, vel_method)
