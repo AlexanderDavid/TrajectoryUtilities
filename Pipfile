@@ -9,9 +9,17 @@ matplotlib = "*"
 seaborn = "*"
 pytest = "*"
 torch = "*"
+cython = "*"
 
 [dev-packages]
 pre-commit = "*"
 
 [requires]
 python_version = "3.8.10"
+
+[packages.Powerlaw]
+git = "https://github.com/AlexanderDavid/Powerlaw"
+
+[packages.e1839a8]
+path = "."
+editable = true
