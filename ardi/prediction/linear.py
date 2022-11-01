@@ -17,7 +17,9 @@ class LinearPredictor(Predictor):
 
         predictions = [
             Position(
-                positions[-1].pos + i * velocity, velocity, positions[-1].time + i * ts
+                positions[-1].pos + i * velocity * ts,
+                velocity,
+                positions[-1].time + i * ts,
             )
             for i in range(1, self._frames + 1)
         ]
