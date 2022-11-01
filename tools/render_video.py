@@ -8,14 +8,27 @@ from matplotlib import animation, collections
 from matplotlib import pyplot as plt
 
 from ardi.dataset import ZuckerDataset
+from ardi.dataset.social_vae import SocialVAEDataset
 
 
 class TrajectoryRenderer:
-    def __init__(self, input_filename: Path, save_filename: Optional[Path]):
+    def __init__(
+        self,
+        input_filename: Path,
+        save_filename: Optional[Path],
+        ttca_idx: Optional[int],
+    ):
         print(f"Reading in {input_filename.resolve()}...")
 
         self._filename = input_filename
-        self._data = ZuckerDataset(str(input_filename))
+        if input_filename.suffix == ".csv":
+            self._data = ZuckerDataset(str(input_filename))
+        else:
+            self._data = SocialVAEDataset(str(input_filename))
+
+        if ttca_idx is not None:
+            self._data.prune_ttca_agent(ttca_idx)
+
         self._save = save_filename is not None
         self._save_fn = save_filename
 
@@ -48,8 +61,12 @@ class TrajectoryRenderer:
         self._ax.set_aspect("equal")
 
         ani = animation.FuncAnimation(
-            fig, self._animate, interval=self._data.timestep * 1000, frames=len(self._data.times)
+            fig,
+            self._animate,
+            interval=self._data.timestep * 1000,
+            frames=len(self._data.times),
         )
+
         if self._save:
             writer = animation.FFMpegWriter(fps=1 / self._data.timestep)
             ani.save(str(self._save_fn), writer=writer)
@@ -85,13 +102,17 @@ def main():
         "--save", type=Path, default=None, help="Path to save the animation to"
     )
 
+    parser.add_argument(
+        "--ttca", type=int, default=None, help="Agent to trim interaction around"
+    )
+
     args = parser.parse_args()
 
     if not args.input_file.exists():
         print(f"Error: no such trajectory file ({str(args.input_file)}) exists")
         exit(1)
 
-    TrajectoryRenderer(args.input_file, args.save)
+    TrajectoryRenderer(args.input_file, args.save, args.ttca).render()
 
 
 if __name__ == "__main__":
