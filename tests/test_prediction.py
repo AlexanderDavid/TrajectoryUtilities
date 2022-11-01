@@ -11,7 +11,7 @@ class TestLinearPredictor(unittest.TestCase):
     def test_linear_prediction(self):
         lp = LinearPredictor(3, VelocityCalc.LAST_GROUND_TRUTH)
 
-        ego = Agent(0, "", 0, np.array([0, 0]))
+        ego = Agent(0, "", 0, np.array([0, 0]), np.array([0, 0]))
         ego.positions = [
             Position(np.array([0, 0]), np.array([1, 0]), 0),
             Position(np.array([1, 0]), np.array([1, 0]), 1),
@@ -28,6 +28,26 @@ class TestLinearPredictor(unittest.TestCase):
             ],
         )
 
+    def test_linear_prediction_backwards(self):
+        lp = LinearPredictor(3, VelocityCalc.LAST_GROUND_TRUTH)
+
+        ego = Agent(0, "", 0, np.array([0, 0]), np.array([0, 0]))
+        ego.positions = [
+            Position(np.array([-0, 0]), np.array([-1, 0.5]), 0),
+            Position(np.array([-1, 0.5]), np.array([-1, 0.5]), 1),
+            Position(np.array([-2, 1]), np.array([-1, 0.5]), 2),
+            Position(np.array([-3, 1.5]), np.array([-1, 0.5]), 3),
+        ]
+
+        self.assertListEqual(
+            lp.predict(ego, [])[0],
+            [
+                Position(np.array([-4, 2]), np.array([-1, 0.5]), 4),
+                Position(np.array([-5, 2.5]), np.array([-1, 0.5]), 5),
+                Position(np.array([-6, 3]), np.array([-1, 0.5]), 6),
+            ],
+        )
+
 
 class TestSocialVAEPredictor(unittest.TestCase):
     def test_social_vae_prediction(self):
@@ -39,7 +59,7 @@ class TestSocialVAEPredictor(unittest.TestCase):
             VelocityCalc.LAST_DISPLACEMENT,
         )
 
-        ego = Agent(0, "", 0, np.array([0, 0]))
+        ego = Agent(0, "", 0, np.array([0, 0]), np.array([0, 0]))
         ego.positions = [
             Position(np.array([0, 0]), np.array([1, 0]), 0),
             Position(np.array([1, 0]), np.array([1, 0]), 1),
@@ -47,7 +67,7 @@ class TestSocialVAEPredictor(unittest.TestCase):
             Position(np.array([3, 0]), np.array([1, 0]), 3),
         ]
 
-        neigh = Agent(0, "", 0, np.array([0, 0]))
+        neigh = Agent(0, "", 0, np.array([0, 0]), np.array([0, 0]))
         neigh.positions = [
             Position(np.array([10, 0]), np.array([-1, 0]), 0),
             Position(np.array([9, 0]), np.array([-1, 0]), 1),
@@ -102,7 +122,7 @@ class TestAbstractPredictionMethods(unittest.TestCase):
                 ],
                 VelocityCalc.LAST_DISPLACEMENT,
             ).tolist(),
-            [1, 0],
+            [-1, 0],
         )
 
     def test_velocity_calc_average_displacement(self):
