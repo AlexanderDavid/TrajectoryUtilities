@@ -6,12 +6,19 @@ from curses.ascii import SO
 from pathlib import Path
 from typing import Optional, Type
 
-from ardi.dataset import Dataset
-from ardi.dataset.social_vae import SocialVAEDataset
-from ardi.dataset.zucker import ZuckerDataset
-from ardi.prediction import Predictor, LinearPredictor, VelocityCalc, SocialVAEPredictor
+from ardi.dataset import Dataset, SocialVAEDataset, ZuckerDataset
+from ardi.prediction import (
+    Predictor,
+    LinearPredictor,
+    VelocityCalc,
+    SocialVAEPredictor,
+    PowerlawPredictor,
+)
+
 
 from matplotlib import pyplot as plt
+
+from ardi.prediction.abstract import PrefVelocityCalc
 
 
 class PredictionVisualizer:
@@ -25,7 +32,7 @@ class PredictionVisualizer:
 
     def predict(self, time_idx: int, agent_idx: int) -> None:
         if (
-            len(self._data.times) <= time_idx + self._pred_horizon
+            len(self._data.times) < time_idx + self._pred_horizon
             or time_idx - self._obs_horizon < 0
         ):
             raise ValueError(
@@ -112,6 +119,19 @@ class PredictionVisualizer:
 
         raise ValueError(f"calc: {calc} must be one of LD or AD or LT or AT")
 
+    @staticmethod
+    def get_pref_velocity_calc(calc: str) -> PrefVelocityCalc:
+        if calc == "FO":
+            return PrefVelocityCalc.FIX_MAG_ORACLE_DIR
+        if calc == "FI":
+            return PrefVelocityCalc.FIX_MAG_INFER_DIR
+        if calc == "IO":
+            return PrefVelocityCalc.INFER_MAG_ORACLE_DIR
+        if calc == "II":
+            return PrefVelocityCalc.INFER_MAG_INFER_DIR
+
+        raise ValueError(f"calc: {calc} must be one of FO or FI or IO or II")
+
 
 def main():
     parser = ArgumentParser(
@@ -124,7 +144,7 @@ def main():
     parser.add_argument(
         "mode",
         type=str,
-        choices=["linear", "socialvae"],
+        choices=["linear", "socialvae", "powerlaw"],
         help="Prediction algorithm to use",
     )
 
@@ -154,23 +174,35 @@ def main():
     )
     parser.add_argument(
         "--vcalc",
-        type=lambda x: PredictionVisualizer.get_velocity_calc(x),
+        type=str,
         default="LD",
         choices=["LD", "AD", "LT", "AT"],
         help="Method to calculate the velocity given to the model with. "
         + "Choices are last displacement, average displacement over the last "
         + "'obs' frames, last ground truth, and average ground truth over the same window.",
     )
+    parser.add_argument(
+        "--pcalc",
+        type=str,
+        default="FI",
+        choices=["FO", "FI", "IO", "II"],
+        help="Method to calculate the preferred velocity given to the model with. Choices are fixed magnitude oracle direction, fixed magnitude inferred direction, inferred magnitude oracle direction, or inferred magnitude inferred direction",
+    )
 
     args = parser.parse_args()
 
+    vcalc = PredictionVisualizer.get_velocity_calc(args.vcalc)
+    pcalc = PredictionVisualizer.get_pref_velocity_calc(args.pcalc)
+
     pred = None
     if args.mode == "linear":
-        pred = LinearPredictor(args.pred, args.vcalc)
+        pred = LinearPredictor(args.pred, vcalc)
     elif args.mode == "socialvae":
         pred = SocialVAEPredictor(
-            args.model, args.radius, args.n_preds, args.pred, args.vcalc
+            args.model, args.radius, args.n_preds, args.pred, vcalc
         )
+    elif args.mode == "powerlaw":
+        pred = PowerlawPredictor(args.pred, vcalc, pcalc)
 
     if ".csv" == args.input_file.suffix:
         data = ZuckerDataset(args.input_file)
