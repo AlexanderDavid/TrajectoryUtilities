@@ -15,7 +15,7 @@ class SocialVAEDataset(Dataset):
 
         # Set up the base data structure of the dataset
         self._agents: Dict[int, Agent] = {}
-        self._times: List[float] = np.unique(self._data[:, 0]).astype(float)
+        self._times: List[float] = sorted(np.unique(self._data[:, 0]).astype(float))
         self._timestep = self._times[1] - self._times[0]
 
         # Read through all of the trajectories for each individual agent
@@ -27,7 +27,7 @@ class SocialVAEDataset(Dataset):
             start = agent_data[0][2:4].astype(float)
 
             # Create the agent
-            t = Agent(idx, agent_data[0][4], None, goal, start)
+            t = Agent(idx, agent_data[0][4], 0.13, goal, start)
 
             # Get the positions and velocities into the positions array
             poss = agent_data[:, 2:4].astype(float)
