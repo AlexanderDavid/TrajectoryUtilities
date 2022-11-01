@@ -5,8 +5,16 @@ from .models import SocialVAE
 import torch
 from typing import List
 
+
 class SocialVAEPredictor(Predictor):
-    def __init__(self, ckpt_fn: str, ob_radius: float, n_predictions: int, frames: int, velocity_calc_method: VelocityCalc):
+    def __init__(
+        self,
+        ckpt_fn: str,
+        ob_radius: float,
+        n_predictions: int,
+        frames: int,
+        velocity_calc_method: VelocityCalc,
+    ):
         super().__init__(frames, velocity_calc_method)
 
         self._model = SocialVAE(horizon=frames, ob_radius=ob_radius, hidden_dim=256)
@@ -26,40 +34,62 @@ class SocialVAEPredictor(Predictor):
         return np.concatenate((np.array([x.pos for x in poss]), vels, accs), -1)
 
     @staticmethod
-    def __get_neighbor_tensor(neighbor_poss: List[Position], agent_poss: List[Position]):
-        vels = np.subtract([x.pos for x in neighbor_poss][1:], [x.pos for x in agent_poss][:-1])
+    def __get_neighbor_tensor(
+        neighbor_poss: List[Position], agent_poss: List[Position]
+    ):
+        vels = np.subtract(
+            [x.pos for x in neighbor_poss][1:], [x.pos for x in agent_poss][:-1]
+        )
         accs = np.diff(vels, axis=0)
 
         vels = np.concatenate(([vels[0]], vels), axis=0)
         accs = np.concatenate(([[0, 0], [0, 0]], accs), axis=0)
-        return np.concatenate((np.array([x.pos for x in neighbor_poss]), vels, accs), -1)
+        return np.concatenate(
+            (np.array([x.pos for x in neighbor_poss]), vels, accs), -1
+        )
 
-
-    def predict(self, ego_history: Agent, neighbors_history: List[Agent]) -> List[List[Position]]:
+    def predict(
+        self, ego_history: Agent, neighbors_history: List[Agent]
+    ) -> List[List[Position]]:
         SocialVAE.seed(1)
         neighbor_numpy = []
 
         for neigh in neighbors_history:
-            neighbor_numpy.append(SocialVAEPredictor.__get_neighbor_tensor(
-                neigh.positions,
-                ego_history.positions 
-            ))
+            neighbor_numpy.append(
+                SocialVAEPredictor.__get_neighbor_tensor(
+                    neigh.positions, ego_history.positions
+                )
+            )
 
         if len(neighbor_numpy):
-            neighbor_numpy = np.hstack(neighbor_numpy).reshape(len(ego_history.positions), len(neighbors_history), 6)
+            neighbor_numpy = np.hstack(neighbor_numpy).reshape(
+                len(ego_history.positions), len(neighbors_history), 6
+            )
             # neighbor_numpy = np.hstack(neighbor_numpy).reshape(4, 1,  6)
-            neighbor_tensor = torch.from_numpy(neighbor_numpy).to(torch.float32).unsqueeze(1)
+            neighbor_tensor = (
+                torch.from_numpy(neighbor_numpy).to(torch.float32).unsqueeze(1)
+            )
         else:
             neighbor_numpy = np.zeros((len(neighbors_history), 0, 6))
-            neighbor_tensor = torch.from_numpy(neighbor_numpy).to(torch.float32).unsqueeze(1)
-        
-        ego_tensor = torch.from_numpy(
-            SocialVAEPredictor.__get_agent_tensor(
-                ego_history.positions
+            neighbor_tensor = (
+                torch.from_numpy(neighbor_numpy).to(torch.float32).unsqueeze(1)
             )
-        ).to(torch.float32).unsqueeze(1)
 
-        preds = self._model(ego_tensor, neighbor_tensor, n_predictions=2000).squeeze(2).detach().cpu().numpy()
+        ego_tensor = (
+            torch.from_numpy(
+                SocialVAEPredictor.__get_agent_tensor(ego_history.positions)
+            )
+            .to(torch.float32)
+            .unsqueeze(1)
+        )
+
+        preds = (
+            self._model(ego_tensor, neighbor_tensor, n_predictions=2000)
+            .squeeze(2)
+            .detach()
+            .cpu()
+            .numpy()
+        )
         preds = preds[SocialVAE.FPC(preds, n_samples=self._n_predictions)]
 
         poss = []
