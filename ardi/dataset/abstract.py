@@ -5,6 +5,8 @@ from matplotlib import pyplot as plt
 import numpy as np
 from secrets import token_hex
 
+from ..metrics import ttca
+
 
 @dataclass
 class Position:
@@ -107,6 +109,34 @@ class Dataset(ABC):
         raise ValueError(
             f"Agents in scene never got to minimum speed {initial_speed} for pruning"
         )
+
+    def prune_ttca_agent(self, agent_idx: int):
+        """Prune the scenario down to only the interaction surrounding a particular agent
+
+        Args:
+            agent_idx (int): agent to prune around
+        """
+
+        # Find the first timestep where interaction will not happen
+        last_t = None
+        for t in self.times[::-1]:
+            last_t = t
+            poss = self.get_positions(t)
+            if agent_idx not in poss:
+                continue
+
+            times = []
+
+            for idx in poss:
+                if idx == agent_idx:
+                    continue
+
+                times.append(ttca(poss[-1][0], poss[idx][0]))
+
+            if max(times) > 0:
+                break
+
+        self.trim_end(len(self.times) - list(self.times).index(last_t))
 
     def prune_goal_radius(self, goal_radius: float):
         """Prune the end of a trajectory so that no agents get close to the goal
