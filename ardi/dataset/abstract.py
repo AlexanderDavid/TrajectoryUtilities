@@ -110,11 +110,12 @@ class Dataset(ABC):
             f"Agents in scene never got to minimum speed {initial_speed} for pruning"
         )
 
-    def prune_ttca_agent(self, agent_idx: int):
+    def prune_ttca_agent(self, agent_idx: int, offset: int = 0):
         """Prune the scenario down to only the interaction surrounding a particular agent
 
         Args:
             agent_idx (int): agent to prune around
+            offset (int): offset to add to the trim at the end. a positive offset will trim more.
         """
 
         # Find the first timestep where interaction will not happen
@@ -136,7 +137,7 @@ class Dataset(ABC):
             if max(times) > 0:
                 break
 
-        self.trim_end(len(self.times) - list(self.times).index(last_t))
+        self.trim_end(len(self.times) - list(self.times).index(last_t) + offset)
 
     def prune_goal_radius(self, goal_radius: float):
         """Prune the end of a trajectory so that no agents get close to the goal
