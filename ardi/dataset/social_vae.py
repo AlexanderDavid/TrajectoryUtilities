@@ -22,8 +22,7 @@ class SocialVAEDataset(Dataset):
         for idx in self._idxs:
             agent_data = self._data[[int(datum[1]) == idx for datum in self._data]]
 
-            # Agent goal should always be the last position
-            goal = agent_data[-1][2:4].astype(float)
+            goal = agent_data[0][7:9].astype(float)
             start = agent_data[0][2:4].astype(float)
 
             # Create the agent
