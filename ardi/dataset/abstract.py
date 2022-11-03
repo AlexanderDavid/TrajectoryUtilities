@@ -32,14 +32,16 @@ class Agent:
         start: np.ndarray,
         color: Optional[str] = None,
         height: Optional[float] = None,
+        pref_speed: Optional[float] = None,
     ):
         self.idx = agent_idx
         self.label = label
         self.radius = radius
         self.goal = goal
+        self.start = start
         self.color = color if color else f"#{token_hex(3).upper()}"
         self.height = height
-        self.start = start
+        self.pref_speed = pref_speed
 
         self.positions: List[Position] = []
 

@@ -94,6 +94,7 @@ class ZuckerDataset(Dataset):
                 agent_data[0][2:4],
                 COLORS_MAP[idx % 2 if idx != -1 else -1],
                 HEIGHT_MAP[idx],
+                0.5 if n.idx == -1 else 1.3,
             )
 
             # Get the positions and velocities into the positions array
