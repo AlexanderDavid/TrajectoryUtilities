@@ -1,13 +1,14 @@
 from .abstract import Predictor, PrefVelocityCalc, VelocityCalc
 from ..dataset import Position, Agent
 from typing import List
-from Powerlaw import PySimulationEngine
+from powerlaw import PySimulationEngine
 import numpy as np
 
 
 class PowerlawParams:
     def __init__(
         self,
+        max_acc: float = 20,
         goal_radius: float = 0.25,
         neighbor_dist: float = 10,
         k: float = 1.5,
@@ -15,6 +16,7 @@ class PowerlawParams:
         m: float = 2,
         t0: float = 3,
     ):
+        self.max_acc = max_acc
         self.goal_radius = goal_radius
         self.neighbor_dist = neighbor_dist
         self.k = k
@@ -54,7 +56,8 @@ class PowerlawPredictor(Predictor):
             tuple(last_velocity),
             ego_history.radius,
             # TODO: Bad magic numbers
-            1.3,
+            ego_history.pref_speed,
+            self._powerlaw_params.max_acc,
             self._powerlaw_params.goal_radius,
             self._powerlaw_params.neighbor_dist,
             self._powerlaw_params.k,
@@ -70,9 +73,6 @@ class PowerlawPredictor(Predictor):
             self._velocity_calc_method,
         )
         engine.setAgentPrefVelocity(ego_idx, tuple(goal_vel))
-        print(ego_history.positions[-1].pos)
-        print(last_velocity)
-        print(goal_vel)
 
         neigh_map = {}
         for n in neighbors_history:
@@ -86,8 +86,8 @@ class PowerlawPredictor(Predictor):
                     tuple(n.goal * 1000),
                     tuple(last_velocity),
                     n.radius,
-                    # TODO: Bad magic numbers
-                    0.5 if n.idx == -1 else 1.3,
+                    n.pref_speed,
+                    self._powerlaw_params.max_acc,
                     self._powerlaw_params.goal_radius,
                     self._powerlaw_params.neighbor_dist,
                     self._powerlaw_params.k,
