@@ -99,6 +99,7 @@ class Predictor(ABC):
                 fdes.append(fde)
 
                 if plot:
+                    fig = plt.figure()
                     Predictor.plot(
                         dummies[idx].positions,
                         [dummies[d_idx].positions for d_idx in dummies if d_idx != idx],
@@ -109,6 +110,7 @@ class Predictor(ABC):
 
                     if save_root:
                         plt.savefig(f"{save_root}_{str(round(time, 3))}.png")
+                        plt.close(fig)
                     else:
                         plt.show()
 
