@@ -5,7 +5,7 @@ import numpy as np
 
 
 class SocialVAEDataset(Dataset):
-    def __init__(self, data_filename: str, actual_timestep: float=0.4):
+    def __init__(self, data_filename: str, actual_timestep: float = 0.4):
         # Read the data in from the CSV
         self._data = np.loadtxt(data_filename, delimiter=" ", dtype=str)
         self._filename = data_filename
@@ -15,7 +15,10 @@ class SocialVAEDataset(Dataset):
 
         # Set up the base data structure of the dataset
         self._agents: Dict[int, Agent] = {}
-        self._times: List[float] = np.array(sorted(np.unique(self._data[:, 0]).astype(float))) * actual_timestep
+        self._times: List[float] = (
+            np.array(sorted(np.unique(self._data[:, 0]).astype(float)))
+            * actual_timestep
+        )
         self._timestep = self._times[1] - self._times[0]
 
         # Read through all of the trajectories for each individual agent
@@ -26,7 +29,14 @@ class SocialVAEDataset(Dataset):
             start = agent_data[0][2:4].astype(float)
 
             # Create the agent
-            t = Agent(idx, agent_data[0][4], 0.13, goal, start, pref_speed=0.5 if idx == -1 else 1.3)
+            t = Agent(
+                idx,
+                agent_data[0][4],
+                0.13,
+                goal,
+                start,
+                pref_speed=0.5 if idx == -1 else 1.3,
+            )
 
             # Get the positions and velocities into the positions array
             poss = agent_data[:, 2:4].astype(float)
@@ -34,7 +44,9 @@ class SocialVAEDataset(Dataset):
             times = agent_data[:, 0].astype(float)
 
             for pos, vel, time in zip(poss, vels, times):
-                t.positions.append(Position(pos, -vel / self._timestep, time * actual_timestep))
+                t.positions.append(
+                    Position(pos, -vel / self._timestep, time * actual_timestep)
+                )
 
             self.agents[idx] = t
 

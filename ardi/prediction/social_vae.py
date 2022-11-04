@@ -14,7 +14,7 @@ class SocialVAEPredictor(Predictor):
         n_predictions: int,
         frames: int,
         velocity_calc_method: VelocityCalc,
-        device: str = "cpu"
+        device: str = "cpu",
     ):
         super().__init__(frames, velocity_calc_method)
 
@@ -25,7 +25,6 @@ class SocialVAEPredictor(Predictor):
         self._model.load_state_dict(state_dict["model"])
         self._model.to(self._device)
         self._model.eval()
-
 
         self._n_predictions = n_predictions
 
@@ -72,12 +71,18 @@ class SocialVAEPredictor(Predictor):
             )
             # neighbor_numpy = np.hstack(neighbor_numpy).reshape(4, 1,  6)
             neighbor_tensor = (
-                torch.from_numpy(neighbor_numpy).to(torch.float32).unsqueeze(1).to(self._device)
+                torch.from_numpy(neighbor_numpy)
+                .to(torch.float32)
+                .unsqueeze(1)
+                .to(self._device)
             )
         else:
             neighbor_numpy = np.zeros((len(neighbors_history), 0, 6))
             neighbor_tensor = (
-                torch.from_numpy(neighbor_numpy).to(torch.float32).unsqueeze(1).to(self._device)
+                torch.from_numpy(neighbor_numpy)
+                .to(torch.float32)
+                .unsqueeze(1)
+                .to(self._device)
             )
 
         ego_tensor = (

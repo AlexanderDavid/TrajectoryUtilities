@@ -42,12 +42,18 @@ class Predictor(ABC):
             List[Position]: prediction for the ego agent
         """
 
-    def predict_dataset(self, ds: Dataset, obs_hor: int, agents: Optional[List[int]]=None, plot: bool=False):
+    def predict_dataset(
+        self,
+        ds: Dataset,
+        obs_hor: int,
+        agents: Optional[List[int]] = None,
+        plot: bool = False,
+    ):
         fdes = []
         ades = []
         for time in ds.times:
             all_valid = True
-            
+
             # Copy a dummy dictionary so we can mess with the position arrays
             dummies = {idx: copy(ds.agents[idx]) for idx in ds.agents}
             truths = {}
@@ -60,14 +66,21 @@ class Predictor(ABC):
                         found_idx = i
                         break
 
-                # If the found index is None or is too close to start or end then this 
+                # If the found index is None or is too close to start or end then this
                 # dummy doesn't appear through the whole trajectory and should be discarded
-                if not (found_idx >= obs_hor and found_idx + self._frames <= len(dummies[idx].positions)):
+                if not (
+                    found_idx >= obs_hor
+                    and found_idx + self._frames <= len(dummies[idx].positions)
+                ):
                     all_valid = False
                     break
 
-                truths[idx] = dummies[idx].positions[found_idx:found_idx + self._frames]
-                dummies[idx].positions = dummies[idx].positions[found_idx - obs_hor:found_idx]
+                truths[idx] = dummies[idx].positions[
+                    found_idx : found_idx + self._frames
+                ]
+                dummies[idx].positions = dummies[idx].positions[
+                    found_idx - obs_hor : found_idx
+                ]
 
             if not all_valid:
                 continue
@@ -75,13 +88,14 @@ class Predictor(ABC):
             for idx in dummies:
                 if agents is not None and idx not in agents:
                     continue
-                
-                preds = self.predict(dummies[idx], [dummies[d_idx] for d_idx in dummies if d_idx != idx])
+
+                preds = self.predict(
+                    dummies[idx], [dummies[d_idx] for d_idx in dummies if d_idx != idx]
+                )
 
                 ade, fde = Predictor.ade_fde(truths[idx], preds)
                 ades.append(ade)
                 fdes.append(fde)
-
 
                 if plot:
                     Predictor.plot(
@@ -89,7 +103,7 @@ class Predictor(ABC):
                         [dummies[d_idx].positions for d_idx in dummies if d_idx != idx],
                         truths[idx],
                         [truths[t_idx] for t_idx in truths if t_idx != idx],
-                        preds
+                        preds,
                     )
                     plt.show()
 
