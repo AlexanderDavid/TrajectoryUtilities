@@ -14,13 +14,18 @@ class SocialVAEPredictor(Predictor):
         n_predictions: int,
         frames: int,
         velocity_calc_method: VelocityCalc,
+        device: str = "cpu"
     ):
         super().__init__(frames, velocity_calc_method)
 
+        self._device = torch.device(device)
+
         self._model = SocialVAE(horizon=frames, ob_radius=ob_radius, hidden_dim=256)
-        state_dict = torch.load(ckpt_fn, map_location="cpu")
+        state_dict = torch.load(ckpt_fn, map_location=device)
         self._model.load_state_dict(state_dict["model"])
+        self._model.to(self._device)
         self._model.eval()
+
 
         self._n_predictions = n_predictions
 
@@ -72,7 +77,7 @@ class SocialVAEPredictor(Predictor):
         else:
             neighbor_numpy = np.zeros((len(neighbors_history), 0, 6))
             neighbor_tensor = (
-                torch.from_numpy(neighbor_numpy).to(torch.float32).unsqueeze(1)
+                torch.from_numpy(neighbor_numpy).to(torch.float32).unsqueeze(1).to(self._device)
             )
 
         ego_tensor = (
@@ -81,6 +86,7 @@ class SocialVAEPredictor(Predictor):
             )
             .to(torch.float32)
             .unsqueeze(1)
+            .to(self._device)
         )
 
         preds = (
