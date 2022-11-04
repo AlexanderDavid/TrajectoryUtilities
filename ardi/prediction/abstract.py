@@ -48,6 +48,7 @@ class Predictor(ABC):
         obs_hor: int,
         agents: Optional[List[int]] = None,
         plot: bool = False,
+        save_root: Optional[str] = None
     ):
         fdes = []
         ades = []
@@ -105,7 +106,11 @@ class Predictor(ABC):
                         [truths[t_idx] for t_idx in truths if t_idx != idx],
                         preds,
                     )
-                    plt.show()
+
+                    if save_root:
+                        plt.savefig(f"{save_root}_{str(round(time, 3))}.png")
+                    else:
+                        plt.show()
 
         return ades, fdes
 
