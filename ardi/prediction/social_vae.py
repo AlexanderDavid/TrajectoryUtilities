@@ -72,7 +72,7 @@ class SocialVAEPredictor(Predictor):
             )
             # neighbor_numpy = np.hstack(neighbor_numpy).reshape(4, 1,  6)
             neighbor_tensor = (
-                torch.from_numpy(neighbor_numpy).to(torch.float32).unsqueeze(1)
+                torch.from_numpy(neighbor_numpy).to(torch.float32).unsqueeze(1).to(self._device)
             )
         else:
             neighbor_numpy = np.zeros((len(neighbors_history), 0, 6))
