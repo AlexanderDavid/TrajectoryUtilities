@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from pathlib import Path
 from typing import List, Optional, Dict, Tuple
 from matplotlib import pyplot as plt
 import numpy as np
@@ -50,34 +51,63 @@ class Agent:
 
 
 class Dataset(ABC):
-    @property
+    def __init__(self, filename: Path, timestep_scale: Optional[float]=None):
+        self._agents: Dict[int, Agent] = {}
+        self._timestep: float = 0
+        self._times: List[float] = []
+
+        self._filename = filename
+
+        self._load(filename)
+
+        # Some of the files come with monotonically increasing ints
+        # as the time. Optionally we can scale all the times in the
+        # scene
+        if timestep_scale:
+            self._times *= timestep_scale
+            for idx in self._agents:
+                for i in range(len(self._agents[idx].positions)):
+                    self._agents[idx].positions[i].time *= timestep_scale
+    
     @abstractmethod
+    def _load(self, filename: Path):
+        """Load the contents of the file into the datamembers:
+            - self._times should contain all of the valid times in the trajectory
+            - self._timestep should contain the average difference between two
+              timesteps
+            - self._agents should contain the master list of agents in the scene
+              each agent should contain their entire trajectory in .positions and
+              the times in the positions should be in the self._times array
+
+        Args:
+            filename (str): Location of the file to load
+        """
+
+    @property
+    def filename(self) -> str:
+        """Return the fully qualified name of the file the data is in
+
+        Returns:
+            str: Filename
+        """
+        return self._filename.resolve()
+
+    @property
     def agents(self) -> Dict[int, Agent]:
         """Return a dictionary containing a map between agent index and
         that agent's information
         """
+        return self._agents
 
     @property
-    @abstractmethod
     def timestep(self) -> float:
         """Return the difference between any two successive points in the dataset"""
-
-    @abstractmethod
-    def _set_timestep(self, val: float):
-        """Return the difference between any two successive points in the dataset"""
+        return self._timestep
 
     @property
-    @abstractmethod
     def times(self) -> List[float]:
         """Return a list of all times that are valid in the trajectory"""
-
-    @abstractmethod
-    def _set_times(self, val: List[float]):
-        """Set the times array
-
-        Args:
-            val (List[float]): new times array
-        """
+        return self._times
 
     def frameskip(self, skip: int) -> None:
         """In place frameskip the dataset.
@@ -85,12 +115,12 @@ class Dataset(ABC):
         Args:
             skip (int): number of frames to skip
         """
-        self._set_times(self.times[::skip])
-        self._set_timestep(self.timestep * skip)
+        self._times = self._times[::skip]
+        self._timestep *= skip
 
-        for idx in self.agents:
-            self.agents[idx].positions = [
-                x for x in self.agents[idx].positions if x.time in self.times
+        for idx in self._agents:
+            self._agents[idx].positions = [
+                x for x in self._agents[idx].positions if x.time in self._times
             ]
 
     def trim_start(self, trim: int) -> None:
@@ -99,11 +129,11 @@ class Dataset(ABC):
         Args:
             trim (int): number of timesteps to remove
         """
-        self._set_times(self._times[trim:])
+        self._times = self._times[trim:]
 
-        for idx in self.agents:
-            self.agents[idx].positions = [
-                x for x in self.agents[idx].positions if x.time in self.times
+        for idx in self._agents:
+            self._agents[idx].positions = [
+                x for x in self._agents[idx].positions if x.time in self._times
             ]
 
     def trim_end(self, trim: int) -> None:
@@ -112,11 +142,11 @@ class Dataset(ABC):
         Args:
             trim (int): number of timesteps to remove
         """
-        self._set_times(self.times[:-trim])
+        self._times = self._times[:-trim]
 
-        for idx in self.agents:
-            self.agents[idx].positions = [
-                x for x in self.agents[idx].positions if x.time in self.times
+        for idx in self._agents:
+            self._agents[idx].positions = [
+                x for x in self._agents[idx].positions if x.time in self._times
             ]
 
     def prune_start_speed(self, initial_speed: float) -> None:
@@ -126,7 +156,7 @@ class Dataset(ABC):
             initial_speed (float): required speed
         """
 
-        for i, time in enumerate(self.times):
+        for i, time in enumerate(self._times):
             poss = self.get_positions(time)
 
             for idx in poss:
@@ -150,7 +180,7 @@ class Dataset(ABC):
 
         # Find the first timestep where interaction will not happen
         last_t = None
-        for t in self.times[::-1]:
+        for t in self._times[::-1]:
             last_t = t
             poss = self.get_positions(t)
             if agent_idx not in poss:
@@ -167,7 +197,7 @@ class Dataset(ABC):
             if max(times) > 0:
                 break
 
-        self.trim_end(len(self.times) - list(self.times).index(last_t) + offset)
+        self.trim_end(len(self._times) - list(self._times).index(last_t) + offset)
 
     def prune_goal_radius(self, goal_radius: float):
         """Prune the end of a trajectory so that no agents get close to the goal
@@ -177,16 +207,16 @@ class Dataset(ABC):
         """
 
         max_first_close = 0
-        for idx in self.agents:
+        for idx in self._agents:
             goal_dists = np.array(
                 [
-                    np.linalg.norm(x.pos - self.agents[idx].goal)
-                    for x in self.agents[idx].positions
+                    np.linalg.norm(x.pos - self._agents[idx].goal)
+                    for x in self._agents[idx].positions
                 ]
             )
             close = goal_dists < goal_radius
             first_close_idx = np.argmax(close)
-            self.agents[idx].positions = self.agents[idx].positions[:first_close_idx]
+            self._agents[idx].positions = self._agents[idx].positions[:first_close_idx]
 
             max_first_close = max(max_first_close, first_close_idx)
 
@@ -203,8 +233,8 @@ class Dataset(ABC):
         max_y = float("-inf")
 
         for idx in self.agents:
-            xs = [x.pos[0] for x in self.agents[idx].positions]
-            ys = [x.pos[1] for x in self.agents[idx].positions]
+            xs = [x.pos[0] for x in self._agents[idx].positions]
+            ys = [x.pos[1] for x in self._agents[idx].positions]
 
             min_x = min(min_x, min(xs))
             max_x = max(max_x, max(xs))
@@ -226,12 +256,12 @@ class Dataset(ABC):
         """
         positions = {}
 
-        for idx in self.agents:
-            for pos in self.agents[idx].positions:
+        for idx in self._agents:
+            for pos in self._agents[idx].positions:
                 if pos.time != time:
                     continue
 
-                positions[idx] = (pos, self.agents[idx])
+                positions[idx] = (pos, self._agents[idx])
 
         return positions
 
@@ -252,22 +282,22 @@ class Dataset(ABC):
             )
 
         if agent_idx is None:
-            agent_idx = max(x for x in self.agents.keys() if x != -1)
+            agent_idx = max(x for x in self._agents.keys() if x != -1)
 
-        goal_vel = self.agents[agent_idx].goal - self.agents[agent_idx].positions[0].pos
+        goal_vel = self._agents[agent_idx].goal - self._agents[agent_idx].positions[0].pos
         heading = -np.arctan2(goal_vel[1], goal_vel[0])
 
-        transform = rotate(-self.agents[agent_idx].positions[0].pos, heading)
+        transform = rotate(-self._agents[agent_idx].positions[0].pos, heading)
 
         for idx in self.agents:
-            self.agents[idx].goal = rotate(self.agents[idx].goal, heading)
-            self.agents[idx].goal += transform
+            self._agents[idx].goal = rotate(self._agents[idx].goal, heading)
+            self._agents[idx].goal += transform
 
-            for i in range(len(self.agents[idx].positions)):
-                self.agents[idx].positions[i].pos = rotate(
-                    self.agents[idx].positions[i].pos, heading
+            for i in range(len(self._agents[idx].positions)):
+                self._agents[idx].positions[i].pos = rotate(
+                    self._agents[idx].positions[i].pos, heading
                 )
-                self.agents[idx].positions[i].pos += transform
+                self._agents[idx].positions[i].pos += transform
 
     def display(self, ax: "AxesSubplot" = None) -> None:
         """Draw the agent's trajectory using matplotlib
@@ -283,22 +313,22 @@ class Dataset(ABC):
         for idx in self.agents:
             # Start position
             ax_.scatter(
-                self.agents[idx].start[0],
-                self.agents[idx].start[1],
-                c=self.agents[idx].color,
+                self._agents[idx].start[0],
+                self._agents[idx].start[1],
+                c=self._agents[idx].color,
             )
 
             # Full trajectory
             ax_.plot(
-                [t.pos[0] for t in self.agents[idx].positions if t.time in self.times],
-                [t.pos[1] for t in self.agents[idx].positions if t.time in self.times],
-                label=self.agents[idx].label,
-                c=self.agents[idx].color,
+                [t.pos[0] for t in self._agents[idx].positions if t.time in self.times],
+                [t.pos[1] for t in self._agents[idx].positions if t.time in self.times],
+                label=self._agents[idx].label,
+                c=self._agents[idx].color,
             )
 
             # Goal position
             ax_.scatter(
-                *self.agents[idx].goal, marker="x", s=40, c=self.agents[idx].color
+                *self._agents[idx].goal, marker="x", s=40, c=self._agents[idx].color
             )
 
         if ax == None:

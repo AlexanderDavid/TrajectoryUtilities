@@ -40,44 +40,20 @@ HEIGHT_MAP = {
 
 
 class ZuckerDataset(Dataset):
-    def __init__(
-        self,
-        data_filename: str,
-        robot_idx: int = None,
-        ttca_eps: float = 0.05,
-        start_speed: float = None,
-    ):
-        """Load a trajectory and optionally trim based on ttca and minimum speed
-
-        Args:
-            data_filename (str): Path to the dataset
-            robot_idx (int, optional): Robot index that will be used to trim the end of the trajectory based on the TTCA. Defaults to None.
-            start_speed (float, optional): Minimum starting speed that will be used to trim the beginning of the trajectory. Defaults to None.
-        """
-        # Try to get the id of the scene from the filename
-        try:
-            self._idx = int(Path(data_filename).stem)
-        except Exception:
-            print(
-                f"dataset: cannot parse filename ({data_filename}) to find scenario index"
-            )
-            self._idx = -1
-
+    def _load(self, filename: Path):
         # Read the data in from the CSV
-        self._data = np.loadtxt(data_filename, delimiter=",")
-        self._filename = data_filename
+        data = np.loadtxt(str(filename), delimiter=",")
 
         # Gather the agent numbers
-        self._idxs = list(map(int, set(self._data[:, 0])))
+        idxs = list(map(int, set(data[:, 0])))
 
         # Set up the base data structure of the dataset
-        self._agents: Dict[int, Agent] = {}
-        self._times: List[float] = np.unique(self._data[:, 1])
+        self._times = np.unique(data[:, 1])
         self._timestep = self._times[1] - self._times[0]
 
         # Read through all of the trajectories for each individual agent
-        for idx in self._idxs:
-            agent_data = self._data[[datum[0] == idx for datum in self._data]]
+        for idx in idxs:
+            agent_data = data[[datum[0] == idx for datum in data]]
 
             # Robot goal should always be the last position
             if idx == -1:
@@ -94,7 +70,7 @@ class ZuckerDataset(Dataset):
                 agent_data[0][2:4],
                 COLORS_MAP[idx % 2 if idx != -1 else -1],
                 HEIGHT_MAP[idx],
-                0.5 if n.idx == -1 else 1.3,
+                0.5 if idx == -1 else 1.3,
             )
 
             # Get the positions and velocities into the positions array
@@ -105,34 +81,7 @@ class ZuckerDataset(Dataset):
             for pos, vel, time in zip(poss, vels, times):
                 t.positions.append(Position(pos, -vel / self._timestep, time))
 
-            self.agents[idx] = t
-
-    @property
-    def filename(self):
-        return self._filename
-
-    @property
-    def id(self):
-        return self._idx
-
-    @property
-    def agents(self):
-        return self._agents
-
-    @property
-    def timestep(self):
-        return self._timestep
-
-    @timestep.setter
-    def _set_timestep(self, val: float):
-        self._timestep = val
-
-    @property
-    def times(self):
-        return self._times
-
-    def _set_times(self, val: List[float]):
-        self._times = val
+            self._agents[idx] = t
 
 
 @dataclass
