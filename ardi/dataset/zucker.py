@@ -123,34 +123,16 @@ class ZuckerDataset(Dataset):
     def timestep(self):
         return self._timestep
 
+    @timestep.setter
+    def _set_timestep(self, val: float):
+        self._timestep = val
+
     @property
     def times(self):
         return self._times
 
-    def frameskip(self, skip: int) -> None:
-        self._times = self._times[::skip]
-        self._timestep *= skip
-
-        for idx in self._agents:
-            self._agents[idx].positions = [
-                x for x in self._agents[idx].positions if x.time in self._times
-            ]
-
-    def trim_start(self, trim: int) -> None:
-        self._times = self._times[trim:]
-
-        for idx in self._agents:
-            self._agents[idx].positions = [
-                x for x in self._agents[idx].positions if x.time in self._times
-            ]
-
-    def trim_end(self, trim: int) -> None:
-        self._times = self._times[:-trim]
-
-        for idx in self._agents:
-            self._agents[idx].positions = [
-                x for x in self._agents[idx].positions if x.time in self._times
-            ]
+    def _set_times(self, val: List[float]):
+        self._times = val
 
 
 @dataclass

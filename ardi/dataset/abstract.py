@@ -62,34 +62,62 @@ class Dataset(ABC):
     def timestep(self) -> float:
         """Return the difference between any two successive points in the dataset"""
 
+    @abstractmethod
+    def _set_timestep(self, val: float):
+        """Return the difference between any two successive points in the dataset"""
+
     @property
     @abstractmethod
     def times(self) -> List[float]:
         """Return a list of all times that are valid in the trajectory"""
 
     @abstractmethod
+    def _set_times(self, val: List[float]):
+        """Set the times array
+
+        Args:
+            val (List[float]): new times array
+        """
+
     def frameskip(self, skip: int) -> None:
         """In place frameskip the dataset.
 
         Args:
             skip (int): number of frames to skip
         """
+        self._set_times(self.times[::skip])
+        self._set_timestep(self.timestep * skip)
 
-    @abstractmethod
+        for idx in self.agents:
+            self.agents[idx].positions = [
+                x for x in self.agents[idx].positions if x.time in self.times
+            ]
+
     def trim_start(self, trim: int) -> None:
         """Remove n values from the start of the scenario
 
         Args:
             trim (int): number of timesteps to remove
         """
+        self._set_times(self._times[trim:])
 
-    @abstractmethod
+        for idx in self.agents:
+            self.agents[idx].positions = [
+                x for x in self.agents[idx].positions if x.time in self.times
+            ]
+
     def trim_end(self, trim: int) -> None:
         """Remove n values from the end of the scenario
 
         Args:
             trim (int): number of timesteps to remove
         """
+        self._set_times(self.times[:-trim])
+
+        for idx in self.agents:
+            self.agents[idx].positions = [
+                x for x in self.agents[idx].positions if x.time in self.times
+            ]
 
     def prune_start_speed(self, initial_speed: float) -> None:
         """Remove the beginning of all trajectories until at least one agent reaches a set speed
