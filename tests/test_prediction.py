@@ -52,7 +52,7 @@ class TestLinearPredictor(unittest.TestCase):
 class TestSocialVAEPredictor(unittest.TestCase):
     def test_social_vae_prediction(self):
         svp = SocialVAEPredictor(
-            "/home/adday/code/SocialVAE/models/zara01/ckpt-best",
+            "../SocialVAE/models/zara01/ckpt-best",
             4,
             5,
             8,
@@ -121,6 +121,7 @@ class TestAbstractPredictionMethods(unittest.TestCase):
                     Position(np.array([0, 0]), np.array([5, 0]), 1),
                 ],
                 VelocityCalc.LAST_DISPLACEMENT,
+                1
             ).tolist(),
             [-1, 0],
         )
@@ -135,6 +136,7 @@ class TestAbstractPredictionMethods(unittest.TestCase):
                     Position(np.array([0, 0]), np.array([5, 0]), 3),
                 ],
                 VelocityCalc.AVERAGE_DISPLACEMENT,
+                1
             ).tolist(),
             [-2, 0],
         )
