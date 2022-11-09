@@ -14,11 +14,15 @@ class SocialVAEPredictor(Predictor):
         n_predictions: int,
         frames: int,
         velocity_calc_method: VelocityCalc,
+        fpc: bool = True,
+        fpc_preds: int = 2000,
         device: str = "cpu",
     ):
         super().__init__(frames, velocity_calc_method)
 
         self._device = torch.device(device)
+        self._fpc = fpc
+        self._fpc_preds = fpc_preds
 
         self._model = SocialVAE(horizon=frames, ob_radius=ob_radius, hidden_dim=256)
         state_dict = torch.load(ckpt_fn, map_location=device)
@@ -95,13 +99,19 @@ class SocialVAEPredictor(Predictor):
         )
 
         preds = (
-            self._model(ego_tensor, neighbor_tensor, n_predictions=2000)
+            self._model(
+                ego_tensor,
+                neighbor_tensor,
+                n_predictions=self._fpc_preds if self._fpc else self._n_predictions,
+            )
             .squeeze(2)
             .detach()
             .cpu()
             .numpy()
         )
-        preds = preds[SocialVAE.FPC(preds, n_samples=self._n_predictions)]
+
+        if self._fpc:
+            preds = preds[SocialVAE.FPC(preds, n_samples=self._n_predictions)]
 
         poss = []
         for pred in preds:
