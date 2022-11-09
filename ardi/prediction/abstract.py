@@ -259,11 +259,11 @@ class Predictor(ABC):
             return np.mean([p.vel for p in poss], axis=0)
 
         if method == VelocityCalc.LAST_DISPLACEMENT:
-            return (poss[-1].pos - poss[-2].pos) * sampled_fps
+            return poss[-1].pos - poss[-2].pos
 
         if method == VelocityCalc.AVERAGE_DISPLACEMENT:
             positions = np.array([p.pos for p in poss])
-            displacements = (positions[1:] - positions[:-1]) * sampled_fps
+            displacements = positions[1:] - positions[:-1]
             return np.mean(displacements, axis=0)
 
         raise ValueError("method must be a valid VelocityCalculation")
