@@ -81,7 +81,7 @@ class SocialVAEPredictor(Predictor):
                 .to(self._device)
             )
         else:
-            neighbor_numpy = np.zeros((len(neighbors_history), 0, 6))
+            neighbor_numpy = np.zeros((len(ego_history.positions), 0, 6))
             neighbor_tensor = (
                 torch.from_numpy(neighbor_numpy)
                 .to(torch.float32)
