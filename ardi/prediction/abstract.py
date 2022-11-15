@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from enum import Enum
 from ..dataset import Position, Agent, Dataset
+from ..metrics import ttca
 from copy import copy
 from typing import List, Optional, Tuple
 
@@ -50,9 +51,16 @@ class Predictor(ABC):
         plot: bool = False,
         save_root: Optional[str] = None,
         plot_title: Optional[str] = None,
+        ignore_neighbors: set = set(),
     ):
         fdes = []
         ades = []
+
+        info = {
+            "ttcas": [],
+            "times": [],
+        }
+
         for time in ds.times:
             all_valid = True
 
@@ -91,8 +99,22 @@ class Predictor(ABC):
                 if agents is not None and idx not in agents:
                     continue
 
+                info["ttcas"].append(
+                    [
+                        f"{idx} -> {d_idx} = {ttca(dummies[idx].positions[0], dummies[d_idx].positions[0])}"
+                        for d_idx in dummies
+                        if d_idx != idx
+                    ]
+                )
+                info["times"].append(time)
+
                 preds = self.predict(
-                    dummies[idx], [dummies[d_idx] for d_idx in dummies if d_idx != idx]
+                    dummies[idx],
+                    [
+                        dummies[d_idx]
+                        for d_idx in dummies
+                        if d_idx != idx and d_idx not in ignore_neighbors
+                    ],
                 )
 
                 ade, fde = Predictor.ade_fde(truths[idx], preds)
@@ -118,7 +140,7 @@ class Predictor(ABC):
                     else:
                         plt.show()
 
-        return ades, fdes
+        return ades, fdes, info
 
     @staticmethod
     def ade_fde(
