@@ -51,7 +51,7 @@ class Agent:
 
 
 class Dataset(ABC):
-    def __init__(self, filename: Path, timestep_scale: Optional[float]=None):
+    def __init__(self, filename: Path, timestep_scale: Optional[float] = None):
         self._agents: Dict[int, Agent] = {}
         self._timestep: float = 0
         self._times: List[float] = []
@@ -68,7 +68,7 @@ class Dataset(ABC):
             for idx in self._agents:
                 for i in range(len(self._agents[idx].positions)):
                     self._agents[idx].positions[i].time *= timestep_scale
-    
+
     @abstractmethod
     def _load(self, filename: Path):
         """Load the contents of the file into the datamembers:
@@ -284,7 +284,9 @@ class Dataset(ABC):
         if agent_idx is None:
             agent_idx = max(x for x in self._agents.keys() if x != -1)
 
-        goal_vel = self._agents[agent_idx].goal - self._agents[agent_idx].positions[0].pos
+        goal_vel = (
+            self._agents[agent_idx].goal - self._agents[agent_idx].positions[0].pos
+        )
         heading = -np.arctan2(goal_vel[1], goal_vel[0])
 
         transform = rotate(-self._agents[agent_idx].positions[0].pos, heading)
@@ -299,10 +301,11 @@ class Dataset(ABC):
                 )
                 self._agents[idx].positions[i].pos += transform
 
-    def display(self, ax: "AxesSubplot" = None) -> None:
+    def display(self, time: float = None, ax: "AxesSubplot" = None) -> None:
         """Draw the agent's trajectory using matplotlib
 
         Args:
+            time (float): Optional time to display the trajectory at
             ax (AxesSubplot, optional): Axes to plot to if you want to display in a subplot. If None plt is used. Defaults to None.
         """
         if ax == None:
@@ -318,13 +321,26 @@ class Dataset(ABC):
                 c=self._agents[idx].color,
             )
 
-            # Full trajectory
+            # Plot trajectory
             ax_.plot(
-                [t.pos[0] for t in self._agents[idx].positions if t.time in self.times],
-                [t.pos[1] for t in self._agents[idx].positions if t.time in self.times],
+                [
+                    t.pos[0]
+                    for t in self._agents[idx].positions
+                    if t.time in self.times and (time is not None and t.time <= time)
+                ],
+                [
+                    t.pos[1]
+                    for t in self._agents[idx].positions
+                    if t.time in self.times and (time is not None and t.time <= time)
+                ],
                 label=self._agents[idx].label,
                 c=self._agents[idx].color,
             )
+
+            # If there is an end time do a little triangle at the current position
+            if time:
+                for pos, agent in self.get_positions(time).values():
+                    ax_.scatter(pos.pos[0], pos.pos[1], c=agent.color, marker="^", s=40)
 
             # Goal position
             ax_.scatter(
