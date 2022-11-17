@@ -52,6 +52,7 @@ class Predictor(ABC):
         save_root: Optional[str] = None,
         plot_title: Optional[str] = None,
         ignore_neighbors: set = set(),
+        only_positive_ttca_to: Optional[int] = None,
     ):
         fdes = []
         ades = []
@@ -98,6 +99,17 @@ class Predictor(ABC):
             for idx in dummies:
                 if agents is not None and idx not in agents:
                     continue
+
+                if only_positive_ttca_to is not None:
+                    if (
+                        only_positive_ttca_to in dummies
+                        and ttca(
+                            dummies[idx].positions[0],
+                            dummies[only_positive_ttca_to].positions[0],
+                        )
+                        <= 0
+                    ):
+                        continue
 
                 info["ttcas"].append(
                     [
