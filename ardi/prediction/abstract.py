@@ -100,14 +100,13 @@ class Predictor(ABC):
                 if agents is not None and idx not in agents:
                     continue
 
-                if only_positive_ttca_to is not None:
-                    if (
-                        only_positive_ttca_to in dummies
-                        and ttca(
-                            dummies[idx].positions[0],
-                            dummies[only_positive_ttca_to].positions[0],
-                        )
-                        <= 0
+                if (only_positive_ttca_to is not None and
+                    only_positive_ttca_to in dummies
+                    and ttca(
+                        dummies[idx].positions[0],
+                        dummies[only_positive_ttca_to].positions[0],
+                    )
+                    <= 0
                     ):
                         continue
 
