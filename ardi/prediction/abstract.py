@@ -53,7 +53,23 @@ class Predictor(ABC):
         plot_title: Optional[str] = None,
         ignore_neighbors: set = set(),
         only_positive_ttca_to: Optional[int] = None,
-    ):
+    ) -> Tuple[List[float], List[float], Dict[str, List[float]]]:
+        """Use the current prediction algorithm to predict all valid interactions in a dataset
+
+        Args:
+            ds (Dataset): Dataset to predict over
+            obs_hor (int): Observation horizon distance
+            agents (Optional[List[int]], optional): Subset of agents to predict for. Defaults to None.
+            plot (bool, optional): If the results should be plotted. Defaults to False.
+            save_root (Optional[str], optional): Path where plotted results should be saved to disk. Defaults to None.
+            plot_title (Optional[str], optional): Title of plotted results. Defaults to None.
+            ignore_neighbors (set, optional): Set of neighbors to ignore. Defaults to set().
+            only_positive_ttca_to (Optional[int], optional): Index of neighbor to ensure positive ttca to for prediction,
+                                                             if the neighbor is in the scene. Defaults to None.
+
+        Returns:
+            Tuple[List[float], List[float], Dict[str, List[float]]]: List of ADE, FDE, and a dict for debugging information
+        """
         fdes = []
         ades = []
 
@@ -93,23 +109,29 @@ class Predictor(ABC):
                     found_idx - obs_hor : found_idx
                 ]
 
+            # If some neighbors are not present for entire trajectory then skip
             if not all_valid:
                 continue
 
+            # Iterate through all agents in frame and predict
             for idx in dummies:
+                # Check if the agent is in the exclusion list for egos
                 if agents is not None and idx not in agents:
                     continue
 
-                if (only_positive_ttca_to is not None and
-                    only_positive_ttca_to in dummies
+                # Check if this is a valid trajectory w.r.t. ttca filtering
+                if (
+                    only_positive_ttca_to is not None
+                    and only_positive_ttca_to in dummies
                     and ttca(
                         dummies[idx].positions[0],
                         dummies[only_positive_ttca_to].positions[0],
                     )
                     <= 0
-                    ):
-                        continue
+                ):
+                    continue
 
+                # Append debugging information
                 info["ttcas"].append(
                     [
                         f"{idx} -> {d_idx} = {ttca(dummies[idx].positions[0], dummies[d_idx].positions[0])}"
@@ -119,6 +141,7 @@ class Predictor(ABC):
                 )
                 info["times"].append(time)
 
+                # Do prediction and append results
                 preds = self.predict(
                     dummies[idx],
                     [
@@ -132,6 +155,7 @@ class Predictor(ABC):
                 ades.append(ade)
                 fdes.append(fde)
 
+                # Plot and optionally save the plot of the results
                 if plot:
                     fig = plt.figure()
                     Predictor.plot(
@@ -157,7 +181,7 @@ class Predictor(ABC):
     def ade_fde(
         ego_truth: List[Position], ego_preds: List[List[Position]]
     ) -> Tuple[float, float]:
-        """Calculate the Average Displacement Error or Final Displacement Erorr
+        """Calculate the Average Displacement Error and Final Displacement Erorr
 
         Args:
             ego_truth (List[Position]): ground truth
