@@ -6,17 +6,15 @@ import numpy as np
 
 
 class SocialVAEDataset(Dataset):
-    def _load(self, filename: Path):
+    def _load(self, filename: Path, delim: str = " "):
         # Read the data in from the CSV
-        data = np.loadtxt(str(filename), delimiter=" ", dtype=str)
+        data = np.loadtxt(str(filename), delimiter=delim, dtype=str)
 
         # Gather the agent numbers
         idxs = list(map(int, set(data[:, 1])))
 
         # Set up the base data structure of the dataset
-        self._times = (
-            np.array(sorted(np.unique(data[:, 0]).astype(float)))
-        )
+        self._times = np.array(sorted(np.unique(data[:, 0]).astype(float)))
         self._timestep = self._times[1] - self._times[0]
 
         # Read through all of the trajectories for each individual agent
@@ -42,8 +40,6 @@ class SocialVAEDataset(Dataset):
             times = agent_data[:, 0].astype(float)
 
             for pos, vel, time in zip(poss, vels, times):
-                t.positions.append(
-                    Position(pos, -vel / self._timestep, time)
-                )
+                t.positions.append(Position(pos, -vel / self._timestep, time))
 
             self._agents[idx] = t
