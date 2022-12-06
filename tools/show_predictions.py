@@ -10,6 +10,7 @@ from ardi.dataset import Dataset, SocialVAEDataset, ZuckerDataset
 from ardi.prediction import (
     Predictor,
     LinearPredictor,
+    NoisyLinearPredictor,
     VelocityCalc,
     SocialVAEPredictor,
     PowerlawPredictor,
@@ -144,7 +145,7 @@ def main():
     parser.add_argument(
         "mode",
         type=str,
-        choices=["linear", "socialvae", "powerlaw"],
+        choices=["noisy", "linear", "socialvae", "powerlaw"],
         help="Prediction algorithm to use",
     )
 
@@ -195,7 +196,9 @@ def main():
     pcalc = PredictionVisualizer.get_pref_velocity_calc(args.pcalc)
 
     pred = None
-    if args.mode == "linear":
+    if args.mode == "noisy":
+        pred = NoisyLinearPredictor(args.pred, vcalc, args.n_preds, 25)
+    elif args.mode == "linear":
         pred = LinearPredictor(args.pred, vcalc)
     elif args.mode == "socialvae":
         pred = SocialVAEPredictor(

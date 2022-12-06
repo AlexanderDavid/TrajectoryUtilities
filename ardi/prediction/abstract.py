@@ -3,7 +3,7 @@ from enum import Enum
 from ..dataset import Position, Agent, Dataset
 from ..metrics import ttca
 from copy import copy
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Dict
 
 import numpy as np
 from matplotlib import pyplot as plt
