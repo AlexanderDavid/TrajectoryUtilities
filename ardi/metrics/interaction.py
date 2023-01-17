@@ -1,10 +1,69 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, List
 
 if TYPE_CHECKING:
-    from ..dataset import Position
+    from ..dataset import Position, Agent
 
 import numpy as np
+
+
+def distance(agent: Agent, other: Agent) -> List[float]:
+    distances = []
+    for pos in agent.positions:
+        for pos_ in other.positions:
+            if pos.time != pos_.time:
+                continue
+
+            distances.append(np.linalg.norm(pos.pos - pos_.pos))
+
+    return distances
+
+
+def number_distance_violations(agent: Agent, other: Agent) -> int:
+    pass
+
+
+def ttc(agent: Position, obstacle: Position) -> float:
+    """Calculate the Time to Collision for two agents as defined in the Powerlaw code from UMN:
+
+    http://motion.cs.umn.edu/PowerLaw/
+
+    Args:
+        agent (Position): Current agent configuration
+        obstacle (Position): Current obstacle configuration
+
+    Returns:
+        float: Time till collision assuming two agents keep their
+                current heading and velocity
+    """
+
+    w = obstacle.pos - agent.pos
+    v = agent.vel - obstacle.vel
+    a = np.dot(v, v)
+    b = np.dot(w, v)
+    c = np.dot(w, w)
+    discr = b * b - a * c
+
+    if discr <= 0 or np.isclose(a, 0):
+        return float("inf")
+
+    discr = np.sqrt(discr)
+    t1 = (b - discr) / a
+    t2 = (b + discr) / a
+
+    if t1 > t2:
+        t1, t2 = t2, t1
+
+    if t2 < 0:
+        return float("-inf")
+
+    if t1 < 0 and t2 > 0:
+        return 0
+
+    if t1 >= 0:
+        return t1
+
+    return float("inf")
 
 
 def ttca(agent: Position, obstacle: Position) -> float:
