@@ -6,8 +6,9 @@ import numpy as np
 
 
 class SocialVAEDataset(Dataset):
-    def _load(self, filename: Path, delim: str = " "):
+    def _load(self, filename: Path, **kwargs: Dict):
         # Read the data in from the CSV
+        delim = " " if "delim" not in kwargs else kwargs["delim"]
         data = np.loadtxt(str(filename), delimiter=delim, dtype=str)
 
         # Gather the agent numbers
@@ -28,10 +29,14 @@ class SocialVAEDataset(Dataset):
             t = Agent(
                 idx,
                 agent_data[0][4],
-                0.13,
+                0.13
+                if "radius" not in kwargs or idx not in kwargs["radius"]
+                else kwargs["radius"][idx],
                 goal,
                 start,
-                pref_speed=0.5 if idx == -1 else 1.3,
+                pref_speed=1.3
+                if "pref_speed" not in kwargs or int(idx) not in kwargs["pref_speed"]
+                else float(kwargs["pref_speed"][idx]),
             )
 
             # Get the positions and velocities into the positions array

@@ -51,14 +51,16 @@ class Agent:
 
 
 class Dataset(ABC):
-    def __init__(self, filename: Path, timestep_scale: Optional[float] = None):
+    def __init__(
+        self, filename: Path, timestep_scale: Optional[float] = None, **kwargs: Dict
+    ):
         self._agents: Dict[int, Agent] = {}
         self._timestep: float = 0
         self._times: List[float] = []
 
         self._filename = filename
 
-        self._load(filename)
+        self._load(filename, **kwargs)
 
         # Some of the files come with monotonically increasing ints
         # as the time. Optionally we can scale all the times in the
@@ -70,7 +72,7 @@ class Dataset(ABC):
                     self._agents[idx].positions[i].time *= timestep_scale
 
     @abstractmethod
-    def _load(self, filename: Path):
+    def _load(self, filename: Path, **kwargs: Dict):
         """Load the contents of the file into the datamembers:
             - self._times should contain all of the valid times in the trajectory
             - self._timestep should contain the average difference between two
