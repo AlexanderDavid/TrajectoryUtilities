@@ -1,11 +1,10 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING, List
+from typing import TYPE_CHECKING, Callable, List, Optional
 
 if TYPE_CHECKING:
     from ..dataset import Position, Agent
 
 import numpy as np
-
 
 def distance(agent: Agent, other: Agent) -> List[float]:
     distances = []
@@ -18,10 +17,24 @@ def distance(agent: Agent, other: Agent) -> List[float]:
 
     return distances
 
+def ratio_distance_violations(agent: Agent, other: Agent, alpha: float, beta: float) -> int:
+    distances = distance(agent, other)
+    close = 0
+    too_close = 0
+    
+    for d in distances:
+        if d >= beta and d <= alpha:
+            close += 1
+        elif d <= beta:
+            too_close += 1
 
-def number_distance_violations(agent: Agent, other: Agent) -> int:
-    pass
+    if close == 0 and too_close == 0:
+        return 0
+    elif close == 0:
+        return 1
 
+    return too_close / close
+        
 
 def ttc(agent: Position, obstacle: Position) -> float:
     """Calculate the Time to Collision for two agents as defined in the Powerlaw code from UMN:
@@ -90,6 +103,16 @@ def ttca(agent: Position, obstacle: Position) -> float:
 
     return -np.dot(p_o_a, v_o_a) / np.linalg.norm(v_o_a) ** 2
 
+def mpds(ego: Agent, other: Agent, filter_fn: Optional[Callable[[Position, Position], bool]]=None) -> List[float]:
+    mpds = []
+    for pos in ego.positions:
+        for pos_ in other.positions:
+            if pos.time != pos_.time or (filter_fn is not None and filter_fn(pos, pos_)):
+                continue
+
+            mpds.append(mpd(pos, pos_))
+
+    return mpds
 
 def mpd(agent: Position, obstacle: Position) -> float:
     """Calculate the projected minimum predicted distance between two agent's at a specified
