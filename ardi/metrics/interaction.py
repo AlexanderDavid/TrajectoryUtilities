@@ -6,22 +6,14 @@ if TYPE_CHECKING:
 
 import numpy as np
 
-def distance(agent: Agent, other: Agent) -> List[float]:
-    distances = []
-    for pos in agent.positions:
-        for pos_ in other.positions:
-            if pos.time != pos_.time:
-                continue
 
-            distances.append(np.linalg.norm(pos.pos - pos_.pos))
-
-    return distances
-
-def ratio_distance_violations(agent: Agent, other: Agent, alpha: float, beta: float) -> int:
+def ratio_distance_violations(
+    agent: Agent, other: Agent, alpha: float, beta: float
+) -> int:
     distances = distance(agent, other)
     close = 0
     too_close = 0
-    
+
     for d in distances:
         if d >= beta and d <= alpha:
             close += 1
@@ -34,7 +26,37 @@ def ratio_distance_violations(agent: Agent, other: Agent, alpha: float, beta: fl
         return 1
 
     return too_close / close
-        
+
+
+def ratio_ttc_violations(agent: Agent, other: Agent, alpha: float) -> float:
+    ttc_values = ttcs(agent, other)
+
+    return len([x <= alpha for x in ttc_values]) / len(ttc_values)
+
+
+def ttcs(agent: Agent, other: Agent) -> List[float]:
+    ttcs = []
+    for pos in agent.positions:
+        for pos_ in other.positions:
+            if pos.time != pos_.time:
+                continue
+
+            ttcs.append(ttc(pos, pos_))
+
+    return ttcs
+
+
+def distance(agent: Agent, other: Agent) -> List[float]:
+    distances = []
+    for pos in agent.positions:
+        for pos_ in other.positions:
+            if pos.time != pos_.time:
+                continue
+
+            distances.append(np.linalg.norm(pos.pos - pos_.pos))
+
+    return distances
+
 
 def ttc(agent: Position, obstacle: Position) -> float:
     """Calculate the Time to Collision for two agents as defined in the Powerlaw code from UMN:
@@ -103,16 +125,24 @@ def ttca(agent: Position, obstacle: Position) -> float:
 
     return -np.dot(p_o_a, v_o_a) / np.linalg.norm(v_o_a) ** 2
 
-def mpds(ego: Agent, other: Agent, filter_fn: Optional[Callable[[Position, Position], bool]]=None) -> List[float]:
+
+def mpds(
+    ego: Agent,
+    other: Agent,
+    filter_fn: Optional[Callable[[Position, Position], bool]] = None,
+) -> List[float]:
     mpds = []
     for pos in ego.positions:
         for pos_ in other.positions:
-            if pos.time != pos_.time or (filter_fn is not None and filter_fn(pos, pos_)):
+            if pos.time != pos_.time or (
+                filter_fn is not None and filter_fn(pos, pos_)
+            ):
                 continue
 
             mpds.append(mpd(pos, pos_))
 
     return mpds
+
 
 def mpd(agent: Position, obstacle: Position) -> float:
     """Calculate the projected minimum predicted distance between two agent's at a specified
