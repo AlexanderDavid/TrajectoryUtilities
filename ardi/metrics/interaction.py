@@ -1,16 +1,21 @@
 from __future__ import annotations
+from math import sqrt
 from typing import TYPE_CHECKING, Callable, List, Optional
+from .util import get_over_trajectory
 
 if TYPE_CHECKING:
     from ..dataset import Position, Agent
 
 import numpy as np
+from tslearn.metrics import dtw
 
 
 def ratio_distance_violations(
     agent: Agent, other: Agent, alpha: float, beta: float
 ) -> int:
-    distances = distance(agent, other)
+    distances = get_over_trajectory(
+        agent, other, lambda x, y: np.linalg.norm(x.pos - y.pos)
+    )
     close = 0
     too_close = 0
 
@@ -29,39 +34,20 @@ def ratio_distance_violations(
 
 
 def ratio_ttc_violations(agent: Agent, other: Agent, alpha: float) -> float:
-    ttc_values = ttcs(agent, other)
+    ttc_values = get_over_trajectory(
+        agent, other, lambda x, y: ttc(x, y, agent.radius + other.radius)
+    )
+    violations = float(len([x for x in ttc_values if x <= alpha]))
+    valids = float(len([x for x in ttc_values if x != float("inf")]))
 
-    return len([x <= alpha for x in ttc_values]) / len(ttc_values)
+    if valids == 0:
+        return 0
 
-
-def ttcs(agent: Agent, other: Agent) -> List[float]:
-    ttcs = []
-    for pos in agent.positions:
-        for pos_ in other.positions:
-            if pos.time != pos_.time:
-                continue
-
-            ttcs.append(ttc(pos, pos_))
-
-    return ttcs
+    return violations / valids
 
 
-def distance(agent: Agent, other: Agent) -> List[float]:
-    distances = []
-    for pos in agent.positions:
-        for pos_ in other.positions:
-            if pos.time != pos_.time:
-                continue
-
-            distances.append(np.linalg.norm(pos.pos - pos_.pos))
-
-    return distances
-
-
-def ttc(agent: Position, obstacle: Position) -> float:
-    """Calculate the Time to Collision for two agents as defined in the Powerlaw code from UMN:
-
-    http://motion.cs.umn.edu/PowerLaw/
+def ttc(agent: Position, obstacle: Position, radius_sum: float) -> float:
+    """Calculate the Time to Collision for two agents
 
     Args:
         agent (Position): Current agent configuration
@@ -71,34 +57,29 @@ def ttc(agent: Position, obstacle: Position) -> float:
         float: Time till collision assuming two agents keep their
                 current heading and velocity
     """
+    w = agent.pos - obstacle.pos
+    c = w.dot(w) - radius_sum
 
-    w = obstacle.pos - agent.pos
-    v = agent.vel - obstacle.vel
-    a = np.dot(v, v)
-    b = np.dot(w, v)
-    c = np.dot(w, w)
-    discr = b * b - a * c
-
-    if discr <= 0 or np.isclose(a, 0):
-        return float("inf")
-
-    discr = np.sqrt(discr)
-    t1 = (b - discr) / a
-    t2 = (b + discr) / a
-
-    if t1 > t2:
-        t1, t2 = t2, t1
-
-    if t2 < 0:
-        return float("-inf")
-
-    if t1 < 0 and t2 > 0:
+    if c < 0:
         return 0
 
-    if t1 >= 0:
-        return t1
+    v = agent.vel - obstacle.vel
+    a = v.dot(v)
+    b = w.dot(v)
 
-    return float("inf")
+    if b > 0:
+        return float("inf")
+
+    discr = b * b - a * c
+    if discr <= 0:
+        return float("inf")
+
+    tau = c / (-b + sqrt(discr))
+
+    if tau < 0:
+        return float("inf")
+
+    return tau
 
 
 def ttca(agent: Position, obstacle: Position) -> float:

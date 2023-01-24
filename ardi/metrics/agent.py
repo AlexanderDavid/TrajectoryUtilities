@@ -19,6 +19,10 @@ def speed(
     return speeds
 
 
+def travel_time(ego: Agent) -> float:
+    return ego.positions[-1].time - ego.positions[0].time
+
+
 def straight_line_displacement(
     ego: Agent, func: Optional[Callable[np.array, float]] = None
 ) -> Union[float, List[float]]:
