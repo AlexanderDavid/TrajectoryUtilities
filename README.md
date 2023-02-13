@@ -8,3 +8,8 @@
 * Load trajectories from Zucker or SocialVAE format
 * Predict future trajectories using SocialVAE or a simple linear model
 * Extract simple metrics about the trajectory
+
+## Todo
+- [ ] Dataset align doesn't move start positions
+- [ ] Dataset align should be able to modify inplace or return copy
+- [ ] Dataset align should return a transformation
