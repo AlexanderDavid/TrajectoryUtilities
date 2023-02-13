@@ -7,6 +7,16 @@ if TYPE_CHECKING:
 
 import numpy as np
 
+def trajectory_regularity(ego: Agent) -> float:
+    ideal_dist = np.linalg.norm(ego.goal - ego.start)
+    actual_dist = np.sum(
+        [
+            np.linalg.norm(ego.positions[i + 1].pos - ego.positions[i].pos)
+            for i in range(len(ego.positions) - 1)
+        ]
+    )
+
+    return ideal_dist / actual_dist
 
 def speed(
     ego: Agent, func: Optional[Callable[np.array, float]] = None
