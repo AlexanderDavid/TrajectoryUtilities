@@ -11,6 +11,24 @@ import numpy as np
 from tslearn.metrics import dtw
 
 
+def count_distance_violations(agent: Agent, others: List[Agent], alpha: float) -> int:
+    if len(others) == 0:
+        return 0
+
+    others = sync_trajectories_in_time(agent, others)
+
+    distances = np.array(
+        [
+            get_over_trajectory(
+                agent, other, lambda x, y: np.linalg.norm(x.pos - y.pos), float("inf")
+            )
+            for other in others
+        ]
+    )
+
+    return len([x for x in np.min(distances, axis=0) if x <= alpha])
+
+
 def ratio_distance_violations(
     agent: Agent, others: List[Agent], alpha: float, beta: float
 ) -> float:
@@ -31,6 +49,51 @@ def ratio_distance_violations(
     pv = percentage_violations(np.min(distances, axis=0), alpha, beta)
 
     return pv
+
+
+def count_ttc_violations(agent: Agent, others: List[Agent], alpha: float) -> int:
+    if len(others) == 0:
+        return 0
+
+    others = sync_trajectories_in_time(agent, others)
+
+    ttc_values = np.array(
+        [
+            get_over_trajectory(
+                agent,
+                other,
+                lambda x, y: ttc(x, y, agent.radius + other.radius),
+                float("inf"),
+            )
+            for other in others
+        ]
+    )
+
+    return len([x for x in np.min(ttc_values, axis=0) if x <= alpha])
+
+
+def ratio_ttc_collision_free(agent: Agent, others: List[Agent], alpha: float) -> float:
+    if len(others) == 0:
+        return 0
+
+    others = sync_trajectories_in_time(agent, others)
+
+    ttc_values = np.array(
+        [
+            get_over_trajectory(
+                agent,
+                other,
+                lambda x, y: ttc(x, y, agent.radius + other.radius),
+                float("inf"),
+            )
+            for other in others
+        ]
+    )
+
+    min_ttcs = np.min(ttc_values, axis=0)
+    min_ttcs = min_ttcs[min_ttcs != np.array(None)]
+
+    return len([x for x in min_ttcs if x >= alpha]) / len(min_ttcs)
 
 
 def ratio_ttc_violations(
