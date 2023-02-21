@@ -119,6 +119,27 @@ def ratio_ttc_violations(
     return percentage_violations(np.min(ttc_values, axis=0), alpha, beta)
 
 
+def ttcs(agent: Agent, others: List[Agent]) -> List[float]:
+    if len(others) == 0:
+        return 0
+
+    others = sync_trajectories_in_time(agent, others)
+
+    mpd_values = np.array(
+        [
+            get_over_trajectory(
+                agent,
+                other,
+                lambda x, y: ttc(x, y, agent.radius + other.radius),
+                float("inf"),
+            )
+            for other in others
+        ]
+    )
+
+    return np.min(mpd_values, axis=0)
+
+
 def ttc(agent: Position, obstacle: Position, radius_sum: float) -> float:
     """Calculate the Time to Collision for two agents
 
@@ -180,22 +201,25 @@ def ttca(agent: Position, obstacle: Position) -> float:
     return -np.dot(p_o_a, v_o_a) / np.linalg.norm(v_o_a) ** 2
 
 
-def mpds(
-    ego: Agent,
-    other: Agent,
-    filter_fn: Optional[Callable[[Position, Position], bool]] = None,
-) -> List[float]:
-    mpds = []
-    for pos in ego.positions:
-        for pos_ in other.positions:
-            if pos.time != pos_.time or (
-                filter_fn is not None and filter_fn(pos, pos_)
-            ):
-                continue
+def mpds(agent: Agent, others: List[Agent]) -> List[float]:
+    if len(others) == 0:
+        return 0
 
-            mpds.append(mpd(pos, pos_))
+    others = sync_trajectories_in_time(agent, others)
 
-    return mpds
+    mpd_values = np.array(
+        [
+            get_over_trajectory(
+                agent,
+                other,
+                lambda x, y: mpd(x, y),
+                float("inf"),
+            )
+            for other in others
+        ]
+    )
+
+    return np.min(mpd_values, axis=0)
 
 
 def mpd(agent: Position, obstacle: Position) -> float:
