@@ -119,7 +119,7 @@ def ratio_ttc_violations(
     return percentage_violations(np.min(ttc_values, axis=0), alpha, beta)
 
 
-def ttcs(agent: Agent, others: List[Agent]) -> List[float]:
+def ttcs(agent: Agent, others: List[Agent], do_min=True) -> List[float]:
     if len(others) == 0:
         return 0
 
@@ -131,13 +131,16 @@ def ttcs(agent: Agent, others: List[Agent]) -> List[float]:
                 agent,
                 other,
                 lambda x, y: ttc(x, y, agent.radius + other.radius),
-                float("inf"),
+                float("NaN"),
             )
             for other in others
         ]
     )
 
-    return np.min(mpd_values, axis=0)
+    if do_min:
+        return np.min(mpd_values, axis=0)
+
+    return mpd_values.T
 
 
 def ttc(agent: Position, obstacle: Position, radius_sum: float) -> float:
@@ -201,7 +204,7 @@ def ttca(agent: Position, obstacle: Position) -> float:
     return -np.dot(p_o_a, v_o_a) / np.linalg.norm(v_o_a) ** 2
 
 
-def mpds(agent: Agent, others: List[Agent]) -> List[float]:
+def mpds(agent: Agent, others: List[Agent], do_min=True) -> List[float]:
     if len(others) == 0:
         return 0
 
@@ -218,8 +221,11 @@ def mpds(agent: Agent, others: List[Agent]) -> List[float]:
             for other in others
         ]
     )
-
-    return np.min(mpd_values, axis=0)
+    
+    if do_min:
+        return np.min(mpd_values, axis=0)
+    
+    return mpd_values.T
 
 
 def mpd(agent: Position, obstacle: Position) -> float:
