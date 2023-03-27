@@ -4,9 +4,34 @@ import numpy as np
 from pathlib import Path
 from PIL import Image
 from matplotlib import pyplot as plt
+import cv2 as cv
 
 
 class Agent:
+    SHIRT = 255, 0, 0,
+    SKIN = 0, 255, 0
+    HAIR = 0, 0, 255
+
+    SKINS = [
+        [85, 79, 72],
+        [68, 59, 49],
+        # [37, 29, 22]
+    ]
+
+    SHIRTS = [
+        [230, 173, 236],
+        [255, 111, 89],
+        [37, 68, 65],
+    ]
+
+    HAIRS = [
+        [5, 5, 5],
+        [255, 175, 135],
+        [120, 79, 75]
+    ]
+
+    IMG_PATH = Path(__file__).parent / "guy.png"
+
     def __init__(
         self,
         pos: Tuple[float, float],
@@ -24,37 +49,18 @@ class Agent:
         else:
             self._orientation = orientation
 
-
-class Scene:
-    SHIRT = 255, 0, 0
-    SKIN = 0, 255, 0
-    HAIR = 0, 0, 255
-
-    SKINS = [[]]
-
-    SHIRTS = [
-        [230, 173, 236],
-        [255, 111, 89],
-        [37, 68, 65],
-    ]
-
-    HAIRS = [[5, 5, 5], [255, 175, 135], [120, 79, 75]]
-
-    def __init__(self, agents: List[Agent]):
-        self._agents = agents
-
-        guy_path = Path(__file__).parent / "guy.png"
-        img = np.asarray(Image.open(guy_path))
-        img_ = self.__generate_random_guy(img)
-        plt.imshow(img)
-        plt.show()
+        img = np.asarray(Image.open(Agent.IMG_PATH))
+        self._img = self.__generate_random_guy(img)
 
     @staticmethod
     def __generate_random_guy(img: np.array) -> np.array:
         img_ = np.copy(img)
 
-        img_ = Scene.__change_color(img_, Scene.HAIR, choice(Scene.HAIRS))
-        img_ = Scene.__change_color(img_, Scene.SHIRT, choice(Scene.SHIRTS))
+        img_ = Agent.__change_color(img_, Agent.HAIR, choice(Agent.HAIRS))
+        img_ = Agent.__change_color(img_, Agent.SHIRT, choice(Agent.SHIRTS))
+        img_ = Agent.__change_color(img_, Agent.SKIN, choice(Agent.SKINS))
+
+        return img_
 
     @staticmethod
     def __change_color(
@@ -68,8 +74,18 @@ class Scene:
 
         return img_
 
+class Scene:
+
+    def __init__(self, agents: List[Agent]):
+        self._agents = agents
+
+    def __init__(self, poss: List[Tuple[float, float]], goals: List[Tuple[float, float]]):
+        self._agents = [
+            Agent(pos, goal, True) for pos, goal in zip(poss, goals)
+        ]
+
     def show(self):
-        pass
+        
 
     def save(self):
         pass
