@@ -57,10 +57,10 @@ def straight_line_displacement(
 
 def straight_line_time_displacement(ego: Agent) -> List[float]:
     start_p = ego.positions[0].pos
-    end_p = ego.positions[1].pos
+    end_p = ego.positions[-1].pos
 
     start_t = ego.positions[0].time
-    end_t = ego.positions[0].time
+    end_t = ego.positions[-1].time
 
     displacements = []
     for pos in ego.positions:
