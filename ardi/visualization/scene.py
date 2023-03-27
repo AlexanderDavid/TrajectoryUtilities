@@ -4,11 +4,15 @@ import numpy as np
 from pathlib import Path
 from PIL import Image
 from matplotlib import pyplot as plt
-import cv2 as cv
+from matplotlib.patches import Circle
 
 
 class Agent:
-    SHIRT = 255, 0, 0,
+    SHIRT = (
+        255,
+        0,
+        0,
+    )
     SKIN = 0, 255, 0
     HAIR = 0, 0, 255
 
@@ -24,11 +28,7 @@ class Agent:
         [37, 68, 65],
     ]
 
-    HAIRS = [
-        [5, 5, 5],
-        [255, 175, 135],
-        [120, 79, 75]
-    ]
+    HAIRS = [[5, 5, 5], [255, 175, 135], [120, 79, 75]]
 
     IMG_PATH = Path(__file__).parent / "guy.png"
 
@@ -52,6 +52,14 @@ class Agent:
         img = np.asarray(Image.open(Agent.IMG_PATH))
         self._img = self.__generate_random_guy(img)
 
+    @property
+    def pos(self):
+        return self._pos
+
+    @property
+    def goal(self):
+        return self._goal
+
     @staticmethod
     def __generate_random_guy(img: np.array) -> np.array:
         img_ = np.copy(img)
@@ -74,18 +82,63 @@ class Agent:
 
         return img_
 
-class Scene:
 
+class Scene:
     def __init__(self, agents: List[Agent]):
         self._agents = agents
 
-    def __init__(self, poss: List[Tuple[float, float]], goals: List[Tuple[float, float]]):
-        self._agents = [
-            Agent(pos, goal, True) for pos, goal in zip(poss, goals)
-        ]
+    def __init__(
+        self, poss: List[Tuple[float, float]], goals: List[Tuple[float, float]]
+    ):
+        self._agents = [Agent(pos, goal, True) for pos, goal in zip(poss, goals)]
+
+    def __get_extents(self) -> Tuple[float, float, float, float]:
+        min_x, max_x = float("inf"), float("-inf")
+        min_y, max_y = float("inf"), float("-inf")
+
+        for a in self._agents:
+            max_x = max([a.pos[0], a.goal[0], max_x])
+            max_y = max([a.pos[1], a.goal[1], max_y])
+
+            min_x = min([a.pos[0], a.goal[0], min_x])
+            min_y = min([a.pos[1], a.goal[1], min_y])
+
+        return min_x, min_y, max_x, max_y
 
     def show(self):
-        
+        agent_patches = [
+            Circle(a.pos, 0.2, facecolor="blue", edgecolor="black")
+            for a in self._agents
+        ]
+
+        goal_patches = [
+            Circle(a.goal, 0.2, facecolor="red", edgecolor="black")
+            for a in self._agents
+        ]
+
+        min_x, min_y, max_x, max_y = self.__get_extents()
+
+        x_range = abs(max_x - min_x)
+        y_range = abs(max_y - min_y)
+
+        x_border = x_range * 0.1
+        y_border = y_range * 0.1
+
+        if x_border == 0:
+            x_border = 2
+        if y_border == 0:
+            y_border = 2
+
+        fig, ax = plt.subplots()
+
+        for gp, ap in zip(goal_patches, agent_patches):
+            ax.add_patch(gp)
+            ax.add_patch(ap)
+
+        ax.set_xlim((min_x - x_border, max_x + x_border))
+        ax.set_ylim((min_y - y_border, max_y + y_border))
+
+        plt.show()
 
     def save(self):
         pass
