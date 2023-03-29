@@ -4,7 +4,7 @@ import numpy as np
 from pathlib import Path
 from PIL import Image
 from matplotlib import pyplot as plt
-from matplotlib.patches import Circle
+from matplotlib.patches import Circle, Arrow, FancyBboxPatch
 
 
 class Agent:
@@ -22,10 +22,12 @@ class Agent:
         # [37, 29, 22]
     ]
 
+    SHIRT_IDX = 0
     SHIRTS = [
         [230, 173, 236],
         [255, 111, 89],
         [37, 68, 65],
+        [0, 0, 0]
     ]
 
     HAIRS = [[5, 5, 5], [255, 175, 135], [120, 79, 75]]
@@ -36,19 +38,23 @@ class Agent:
         self,
         pos: Tuple[float, float],
         goal: Tuple[float, float],
+        radius: float = 0.3,
         goal_oriented: bool = True,
         orientation: Optional[float] = None,
     ):
-        self._pos = np.array(pos)
-        self._goal = np.array(goal)
+        self._pos = np.array(pos, dtype=np.float32)
+        self._goal = np.array(goal, dtype=np.float32)
+        self._radius = radius
         if goal_oriented:
-            v1 = self._pos / np.linalg.norm(self._pos)
-            v2 = self._goal / np.linalg.norm(self._goal)
-
-            self._orientation = np.arccos(np.clip(np.dot(v1, v2), -1.0, 1.0))
+            self._vel = self._goal - self.pos
+            self._vel += np.finfo(float).eps
+            self._vel /= np.linalg.norm(self._vel)
+            self._vel *= self._radius * 2
         else:
-            self._orientation = orientation
+            # self._orientation = orientation
+            raise NotImplementedError()
 
+        self._main_color = None
         img = np.asarray(Image.open(Agent.IMG_PATH))
         self._img = self.__generate_random_guy(img)
 
@@ -60,12 +66,26 @@ class Agent:
     def goal(self):
         return self._goal
 
-    @staticmethod
-    def __generate_random_guy(img: np.array) -> np.array:
+    @property
+    def radius(self):
+        return self._radius
+
+    @property
+    def vel(self):
+        return self._vel
+
+    @property
+    def color(self):
+        return self._main_color
+
+    def __generate_random_guy(self, img: np.array) -> np.array:
         img_ = np.copy(img)
 
+        self._main_color = Agent.SHIRTS[Agent.SHIRT_IDX]
+        Agent.SHIRT_IDX += 1
+
         img_ = Agent.__change_color(img_, Agent.HAIR, choice(Agent.HAIRS))
-        img_ = Agent.__change_color(img_, Agent.SHIRT, choice(Agent.SHIRTS))
+        img_ = Agent.__change_color(img_, Agent.SHIRT, self._main_color)
         img_ = Agent.__change_color(img_, Agent.SKIN, choice(Agent.SKINS))
 
         return img_
@@ -97,22 +117,30 @@ class Scene:
         min_y, max_y = float("inf"), float("-inf")
 
         for a in self._agents:
-            max_x = max([a.pos[0], a.goal[0], max_x])
-            max_y = max([a.pos[1], a.goal[1], max_y])
+            max_x = max([a.pos[0] + a.radius, a.goal[0] + a.radius, max_x])
+            max_y = max([a.pos[1] + a.radius, a.goal[1] + a.radius, max_y])
 
-            min_x = min([a.pos[0], a.goal[0], min_x])
-            min_y = min([a.pos[1], a.goal[1], min_y])
+            min_x = min([a.pos[0] - a.radius, a.goal[0] - a.radius, min_x])
+            min_y = min([a.pos[1] - a.radius, a.goal[1] - a.radius, min_y])
 
         return min_x, min_y, max_x, max_y
 
     def show(self):
         agent_patches = [
-            Circle(a.pos, 0.2, facecolor="blue", edgecolor="black")
+            Circle(a.pos, a.radius, facecolor=np.array(a.color) / 255, edgecolor="black")
             for a in self._agents
         ]
 
+        arrow_patches = [
+            Arrow(a.pos[0], a.pos[1], a.vel[0], a.vel[1], facecolor=np.array(a.color) / 255, edgecolor="black", lw=2) for a in self._agents
+        ]
+
+        inner_arrow_patches = [
+            Arrow(a.pos[0], a.pos[1], a.vel[0], a.vel[1], facecolor=np.array(a.color) / 255) for a in self._agents
+        ]
+
         goal_patches = [
-            Circle(a.goal, 0.2, facecolor="red", edgecolor="black")
+            FancyBboxPatch(a.goal - a.radius / 2, a.radius, a.radius, facecolor=np.array(a.color) / 255, edgecolor="black")
             for a in self._agents
         ]
 
@@ -124,19 +152,18 @@ class Scene:
         x_border = x_range * 0.1
         y_border = y_range * 0.1
 
-        if x_border == 0:
-            x_border = 2
-        if y_border == 0:
-            y_border = 2
+        _, ax = plt.subplots()
+        ax.axis("off")
 
-        fig, ax = plt.subplots()
-
-        for gp, ap in zip(goal_patches, agent_patches):
+        for gp, ap, arr_p, ip in zip(goal_patches, agent_patches, arrow_patches, inner_arrow_patches):
             ax.add_patch(gp)
+            ax.add_patch(arr_p)
             ax.add_patch(ap)
+            ax.add_patch(ip)
 
         ax.set_xlim((min_x - x_border, max_x + x_border))
         ax.set_ylim((min_y - y_border, max_y + y_border))
+        ax.set_aspect("equal")
 
         plt.show()
 
