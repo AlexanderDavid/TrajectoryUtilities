@@ -66,6 +66,6 @@ def straight_line_time_displacement(ego: Agent) -> List[float]:
     for pos in ego.positions:
         fractional_time = (pos.time - start_t) / (end_t - start_t)
         straight_line_distance = start_p + ((end_p - start_p) * fractional_time)
-        displacements.append(pos.pos - straight_line_distance)
+        displacements.append(np.linalg.norm(pos.pos - straight_line_distance))
 
     return displacements
