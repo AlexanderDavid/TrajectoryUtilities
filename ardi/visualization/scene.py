@@ -25,7 +25,7 @@ class Agent:
     ]
 
     SHIRT_IDX = 0
-    SHIRTS = [[218, 196, 247], [244, 152, 156], [235, 210, 180], [0, 0, 0]]
+    SHIRTS = [[218, 196, 247], [244, 152, 156], [235, 210, 180]]
 
     HAIRS = [[5, 5, 5], [255, 175, 135], [120, 79, 75]]
 
@@ -38,30 +38,26 @@ class Agent:
         goal: Tuple[float, float],
         radius: float = 0.3,
         robot: bool = False,
-        goal_oriented: bool = True,
-        orientation: Optional[float] = None,
     ):
         self._pos = np.array(pos, dtype=np.float32)
         self._goal = np.array(goal, dtype=np.float32)
         self._radius = radius
-        if goal_oriented:
-            self._vel = self._goal - self.pos
-            self._vel += np.finfo(float).eps
-            self._vel /= np.linalg.norm(self._vel)
-            self._vel *= self._radius * 2
-            self._orientation = np.arctan2(self._vel[1], self.vel[0])
-        else:
-            # self._orientation = orientation
-            raise NotImplementedError()
 
-        self._main_color = None
+        self._vel = self._goal - self.pos
+        self._vel += np.finfo(float).eps
+        self._vel /= np.linalg.norm(self._vel)
+        self._vel *= self._radius * 2
+        self._orientation = np.arctan2(self._vel[1], self.vel[0])
+
         pil_img = Image.open(Agent.ROBOT_PATH if robot else Agent.IMG_PATH)
         pil_img = pil_img.rotate(
             np.degrees(self._orientation) - 90, Image.NEAREST, expand=1
         )
         img = np.asarray(pil_img)
-        self._img = self.__generate_random_guy(img)
-        self._offset_img = OffsetImage(self._img, zoom=0.1 if robot else 0.075)
+
+        self._main_color = (0.1, 0.1, 0.1)
+        self._img = img if robot else self.__generate_random_guy(img)
+        self._offset_img = OffsetImage(self._img, zoom=0.125 if robot else 0.075)
 
     @property
     def pos(self):
@@ -130,9 +126,7 @@ class Agent:
         self._main_color = Agent.SHIRTS[Agent.SHIRT_IDX % len(Agent.SHIRTS)]
         Agent.SHIRT_IDX += 1
 
-        # img_ = Agent.__change_color(img_, Agent.HAIR, choice(Agent.HAIRS))
         img_ = Agent.__change_color(img_, Agent.SHIRT, self._main_color)
-        # img_ = Agent.__change_color(img_, Agent.SKIN, choice(Agent.SKINS))
 
         return img_
 
@@ -177,17 +171,16 @@ class Scene:
         return min_x, min_y, max_x, max_y
 
     def __generate_figure(self):
+        # Find out where to focus
         min_x, min_y, max_x, max_y = self.__get_extents()
-
         x_range = abs(max_x - min_x)
         y_range = abs(max_y - min_y)
-
         x_border = x_range * self._border_pct
         y_border = y_range * self._border_pct
 
-        _, ax = plt.subplots()
-        ax.axis("off")
 
+        # Generate the background checkerboard
+        _, ax = plt.subplots()
         cell = 2.5
         for i, x in enumerate(np.arange(min_x, max_x, cell)):
             for j, y in enumerate(np.arange(min_y, max_y, cell)):
@@ -197,12 +190,20 @@ class Scene:
 
                 ax.add_patch(Rectangle((x, y), cell, cell, facecolor=color))
 
+        # Plot the trajectory lines
+        # for agent in self._agents:
+        #     ax.plot([agent.pos[0], agent.goal[0]], [agent.pos[1], agent.goal[1]], color=np.array(agent.color) / 255, alpha=0.5)
+
+        # Add the goal rounded rectangles
         for p in [a.get_goal_patch() for a in self._agents]:
             ax.add_patch(p)
 
+        # Add the icons for the agents
         for artist in [a.get_agent_image() for a in self._agents]:
             ax.add_artist(artist)
 
+        # Make the plots look plain and zoomed in
+        ax.axis("off")
         ax.set_xlim((min_x - x_border, max_x + x_border))
         ax.set_ylim((min_y - y_border, max_y + y_border))
         ax.set_aspect("equal")
