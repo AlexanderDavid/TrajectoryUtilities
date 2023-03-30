@@ -1,10 +1,12 @@
+from copy import deepcopy
 from random import choice
 from typing import Tuple, Optional, List
 import numpy as np
 from pathlib import Path
 from PIL import Image
 from matplotlib import pyplot as plt
-from matplotlib.patches import Circle, Arrow, FancyBboxPatch
+from matplotlib.patches import Patch, Circle, Arrow, FancyBboxPatch, Rectangle
+from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 
 
 class Agent:
@@ -13,7 +15,7 @@ class Agent:
         0,
         0,
     )
-    SKIN = 0, 255, 0
+    SKIN = 255, 0, 0
     HAIR = 0, 0, 255
 
     SKINS = [
@@ -23,22 +25,19 @@ class Agent:
     ]
 
     SHIRT_IDX = 0
-    SHIRTS = [
-        [230, 173, 236],
-        [255, 111, 89],
-        [37, 68, 65],
-        [0, 0, 0]
-    ]
+    SHIRTS = [[218, 196, 247], [244, 152, 156], [235, 210, 180], [0, 0, 0]]
 
     HAIRS = [[5, 5, 5], [255, 175, 135], [120, 79, 75]]
 
     IMG_PATH = Path(__file__).parent / "guy.png"
+    ROBOT_PATH = Path(__file__).parent / "robot.png"
 
     def __init__(
         self,
         pos: Tuple[float, float],
         goal: Tuple[float, float],
         radius: float = 0.3,
+        robot: bool = False,
         goal_oriented: bool = True,
         orientation: Optional[float] = None,
     ):
@@ -50,13 +49,19 @@ class Agent:
             self._vel += np.finfo(float).eps
             self._vel /= np.linalg.norm(self._vel)
             self._vel *= self._radius * 2
+            self._orientation = np.arctan2(self._vel[1], self.vel[0])
         else:
             # self._orientation = orientation
             raise NotImplementedError()
 
         self._main_color = None
-        img = np.asarray(Image.open(Agent.IMG_PATH))
+        pil_img = Image.open(Agent.ROBOT_PATH if robot else Agent.IMG_PATH)
+        pil_img = pil_img.rotate(
+            np.degrees(self._orientation) - 90, Image.NEAREST, expand=1
+        )
+        img = np.asarray(pil_img)
         self._img = self.__generate_random_guy(img)
+        self._offset_img = OffsetImage(self._img, zoom=0.1 if robot else 0.075)
 
     @property
     def pos(self):
@@ -78,15 +83,56 @@ class Agent:
     def color(self):
         return self._main_color
 
+    def get_agent_patches(self) -> List[Patch]:
+        return [
+            # Outline of arrow
+            Arrow(
+                self.pos[0],
+                self.pos[1],
+                self.vel[0],
+                self.vel[1],
+                facecolor=np.array(self.color) / 255,
+                edgecolor="black",
+                lw=2,
+            ),
+            # Main body
+            Circle(
+                self.pos,
+                self.radius,
+                facecolor=np.array(self.color) / 255,
+                edgecolor="black",
+            ),
+            # Inside of arrow to fill circles border
+            Arrow(
+                self.pos[0],
+                self.pos[1],
+                self.vel[0],
+                self.vel[1],
+                facecolor=np.array(self.color) / 255,
+            ),
+        ]
+
+    def get_goal_patch(self) -> Patch:
+        return FancyBboxPatch(
+            self.goal - self.radius / 2,
+            self.radius,
+            self.radius,
+            facecolor=np.array(self.color) / 255,
+            edgecolor="black",
+        )
+
+    def get_agent_image(self) -> AnnotationBbox:
+        return AnnotationBbox(self._offset_img, self.pos, pad=0, frameon=False)
+
     def __generate_random_guy(self, img: np.array) -> np.array:
         img_ = np.copy(img)
 
-        self._main_color = Agent.SHIRTS[Agent.SHIRT_IDX]
+        self._main_color = Agent.SHIRTS[Agent.SHIRT_IDX % len(Agent.SHIRTS)]
         Agent.SHIRT_IDX += 1
 
-        img_ = Agent.__change_color(img_, Agent.HAIR, choice(Agent.HAIRS))
+        # img_ = Agent.__change_color(img_, Agent.HAIR, choice(Agent.HAIRS))
         img_ = Agent.__change_color(img_, Agent.SHIRT, self._main_color)
-        img_ = Agent.__change_color(img_, Agent.SKIN, choice(Agent.SKINS))
+        # img_ = Agent.__change_color(img_, Agent.SKIN, choice(Agent.SKINS))
 
         return img_
 
@@ -104,13 +150,18 @@ class Agent:
 
 
 class Scene:
-    def __init__(self, agents: List[Agent]):
-        self._agents = agents
-
     def __init__(
-        self, poss: List[Tuple[float, float]], goals: List[Tuple[float, float]]
+        self,
+        poss: List[Tuple[float, float]],
+        goals: List[Tuple[float, float]],
+        robot_idx: Optional[int],
+        border_pct: float,
     ):
-        self._agents = [Agent(pos, goal, True) for pos, goal in zip(poss, goals)]
+        self._agents = [
+            Agent(pos, goal, True, robot_idx is not None and i == robot_idx)
+            for i, (pos, goal) in enumerate(zip(poss, goals))
+        ]
+        self._border_pct = border_pct
 
     def __get_extents(self) -> Tuple[float, float, float, float]:
         min_x, max_x = float("inf"), float("-inf")
@@ -125,47 +176,46 @@ class Scene:
 
         return min_x, min_y, max_x, max_y
 
-    def show(self):
-        agent_patches = [
-            Circle(a.pos, a.radius, facecolor=np.array(a.color) / 255, edgecolor="black")
-            for a in self._agents
-        ]
-
-        arrow_patches = [
-            Arrow(a.pos[0], a.pos[1], a.vel[0], a.vel[1], facecolor=np.array(a.color) / 255, edgecolor="black", lw=2) for a in self._agents
-        ]
-
-        inner_arrow_patches = [
-            Arrow(a.pos[0], a.pos[1], a.vel[0], a.vel[1], facecolor=np.array(a.color) / 255) for a in self._agents
-        ]
-
-        goal_patches = [
-            FancyBboxPatch(a.goal - a.radius / 2, a.radius, a.radius, facecolor=np.array(a.color) / 255, edgecolor="black")
-            for a in self._agents
-        ]
-
+    def __generate_figure(self):
         min_x, min_y, max_x, max_y = self.__get_extents()
 
         x_range = abs(max_x - min_x)
         y_range = abs(max_y - min_y)
 
-        x_border = x_range * 0.1
-        y_border = y_range * 0.1
+        x_border = x_range * self._border_pct
+        y_border = y_range * self._border_pct
 
         _, ax = plt.subplots()
         ax.axis("off")
 
-        for gp, ap, arr_p, ip in zip(goal_patches, agent_patches, arrow_patches, inner_arrow_patches):
-            ax.add_patch(gp)
-            ax.add_patch(arr_p)
-            ax.add_patch(ap)
-            ax.add_patch(ip)
+        cell = 2.5
+        for i, x in enumerate(np.arange(min_x, max_x, cell)):
+            for j, y in enumerate(np.arange(min_y, max_y, cell)):
+                color = (0.908, 0.908, 0.908)
+                if (i % 2 == 0 and j % 2 == 0) or (i % 2 == 1 and j % 2 == 1):
+                    color = (0.97, 0.97, 0.97)
+
+                ax.add_patch(Rectangle((x, y), cell, cell, facecolor=color))
+
+        for p in [a.get_goal_patch() for a in self._agents]:
+            ax.add_patch(p)
+
+        for artist in [a.get_agent_image() for a in self._agents]:
+            ax.add_artist(artist)
 
         ax.set_xlim((min_x - x_border, max_x + x_border))
         ax.set_ylim((min_y - y_border, max_y + y_border))
         ax.set_aspect("equal")
 
+        return ax
+
+    def show(self):
+        self.__generate_figure()
+        plt.subplots_adjust(left=0, right=1, top=1, bottom=0)
         plt.show()
 
-    def save(self):
-        pass
+    def save(self, filename: str, format: str, dpi: int = 1200):
+        self.__generate_figure()
+        # plt.subplots_adjust(left=0, right=0.0001, top=0.0001, bottom=0)
+        plt.tight_layout()
+        plt.savefig(filename, format=format, dpi=dpi, bbox_inches="tight", pad_inches=0)
