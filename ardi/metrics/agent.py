@@ -7,6 +7,17 @@ if TYPE_CHECKING:
 
 import numpy as np
 
+
+def energy_efficiency(ego: Agent, b: float = 2.25, c: float = 1) -> float:
+    ees = []
+    for pos in ego.positions:
+        e = b + c * np.linalg.norm(pos.vel) ** 2
+        p = np.dot(pos.vel, (ego.goal - pos.pos) / np.array(ego.goal - pos.pos))
+        ees.append(p / e)
+
+    return np.sum(ees)
+
+
 def trajectory_regularity(ego: Agent) -> float:
     ideal_dist = np.linalg.norm(ego.goal - ego.start)
     actual_dist = np.sum(
@@ -17,6 +28,7 @@ def trajectory_regularity(ego: Agent) -> float:
     )
 
     return ideal_dist / actual_dist
+
 
 def speed(
     ego: Agent, func: Optional[Callable[np.array, float]] = None
@@ -69,3 +81,15 @@ def straight_line_time_displacement(ego: Agent) -> List[float]:
         displacements.append(pos.pos - straight_line_distance)
 
     return displacements
+
+
+def distance_overhead(ego: Agent) -> float:
+    ideal_distance = np.linalg.norm(ego.positions[-1].pos - ego.positions[0].pos)
+
+    actual_distance = 0
+    for i in range(len(ego.positions) - 1):
+        actual_distance += np.linalg.norm(
+            ego.positions[i].pos - ego.positions[i + 1].pos
+        )
+
+    return actual_distance / ideal_distance
