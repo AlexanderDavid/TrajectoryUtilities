@@ -8,14 +8,43 @@ if TYPE_CHECKING:
 import numpy as np
 
 
-def energy_efficiency(ego: Agent, b: float = 2.25, c: float = 1) -> float:
+def curvature(ego: Agent):
+    """Calculates the curvature of a trajectory using the finite difference method
+
+    Args:
+        ego (Agent): Agent to calculate curvature of trajectory
+    """
+
+    x = np.array([x.pos[0] for x in ego.positions])
+    y = np.array([x.pos[1] for x in ego.positions])
+
+    dx = np.gradient(x)
+    dy = np.gradient(y)
+
+    ddx = np.gradient(dx)
+    ddy = np.gradient(dy)
+
+    return np.abs(ddx * dy - dx * ddy) / np.power(dx**2 + dy**2, 3 / 2)
+
+
+def energy_efficiency(
+    ego: Agent, b: float = 2.25, c: float = 1, sum: bool = True
+) -> float:
+    es = []
+    ps = []
     ees = []
     for pos in ego.positions:
         e = b + c * np.linalg.norm(pos.vel) ** 2
-        p = np.dot(pos.vel, (ego.goal - pos.pos) / np.array(ego.goal - pos.pos))
+        p = np.dot(pos.vel, (ego.goal - pos.pos) / np.linalg.norm(ego.goal - pos.pos))
+
+        es.append(e)
+        ps.append(p)
         ees.append(p / e)
 
-    return np.sum(ees)
+    if sum:
+        return np.sum(ees)
+
+    return es, ps, ees
 
 
 def trajectory_regularity(ego: Agent) -> float:
