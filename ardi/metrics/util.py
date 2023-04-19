@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING, List, Callable, Any
+from typing import TYPE_CHECKING, List, Callable, Any, Tuple
 from warnings import warn
 from copy import deepcopy
 
@@ -7,6 +7,32 @@ if TYPE_CHECKING:
     from ..dataset import Agent
 
 import numpy as np
+from scipy.interpolate import interp1d
+
+
+def resample_trajectory(ego: Agent, num_samples: float) -> Tuple[np.array, np.array]:
+    """Resample a trajectory for equally distant points
+
+    Args:
+        ego (Agent): Agen't to resample over
+        num_samples (float): number of samples to use
+
+    Returns:
+        Tuple[np.array, np.array]: x and y components of trajectory
+    """
+    # Calculate the cumulative distance over the entire trajectory
+    x = np.array([x.pos[0] for x in ego.positions])
+    y = np.array([x.pos[1] for x in ego.positions])
+
+    d = np.sqrt(np.diff(x) ** 2 + np.diff(y) ** 2)
+    cum_d = np.concatenate(([0], np.cumsum(d)))
+    dist_resampled = np.linspace(0, cum_d[-1], num_samples)
+
+    # Linearly interpolate over the distance
+    f_x = interp1d(cum_d, x)
+    f_y = interp1d(cum_d, y)
+
+    return f_x(dist_resampled), f_y(dist_resampled)
 
 
 def sync_trajectories_in_time(ego: Agent, others: List[Agent]) -> List[Agent]:
