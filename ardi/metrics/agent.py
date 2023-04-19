@@ -1,6 +1,7 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING
-from typing import Union, List, Optional, Callable
+from typing import Union, List, Optional, Callable, Tuple
+from .util import resample_trajectory
 
 if TYPE_CHECKING:
     from ..dataset import Agent
@@ -15,8 +16,7 @@ def curvature(ego: Agent):
         ego (Agent): Agent to calculate curvature of trajectory
     """
 
-    x = np.array([x.pos[0] for x in ego.positions])
-    y = np.array([x.pos[1] for x in ego.positions])
+    x, y = resample_trajectory(ego, len(ego.positions))
 
     dx = np.gradient(x)
     dy = np.gradient(y)
