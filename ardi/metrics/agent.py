@@ -1,6 +1,7 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING
 from typing import Union, List, Optional, Callable, Tuple
+from enum import Enum
 from .util import resample_trajectory
 
 if TYPE_CHECKING:
@@ -10,6 +11,30 @@ import numpy as np
 
 
 def curvature(ego: Agent):
+    def angle(u1: np.array, u2: np.array) -> float:
+        result = np.clip(
+            np.dot(u1, u2) / (np.linalg.norm(u1) * np.linalg.norm(u2)), -1, 1
+        )
+        return np.arccos(result)
+
+    curvatures = []
+
+    x, y = resample_trajectory(ego, len(ego.positions))
+    points = np.vstack((x, y)).T
+
+    for i in range(1, len(x) - 1):
+        u1 = points[i] - points[i - 1]
+        u2 = points[i + 1] - points[i]
+
+        deltaTheta = angle(u1, u2)
+        curvatures.append(
+            np.power(deltaTheta / ((np.linalg.norm(u1) + np.linalg.norm(u2)) / 2), 2)
+        )
+
+    return curvatures
+
+
+def curvature_fdm(ego: Agent):
     """Calculates the curvature of a trajectory using the finite difference method
 
     Args:
