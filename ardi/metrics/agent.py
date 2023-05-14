@@ -9,6 +9,50 @@ if TYPE_CHECKING:
 
 import numpy as np
 
+class CurvatureMethod(Enum):
+    SQUARE = 0
+    FINITE_DIFFERENCE = 1
+
+class ResampleMethod(Enum):
+    MIN_DISTANCE = 0
+    NUM_POINTS = 1
+
+def curvature(ego: Agent, curve_method: CurvatureMethod=CurvatureMethod.SQUARE, 
+              resample_method: ResampleMethod=ResampleMethod.MIN_DISTANCE,
+              resample_arg: Union[float, int]=0.1) -> List[float]:
+    """Calculate the curvature of a path using either the square curvature or the finite difference
+    method. The resampling can also be changed to either sample such that no two points are closer than
+    some x or such that there are x points in the trajectory
+
+    Args:
+        ego (Agent): Trajectory to calculate after
+        curve_method (CurvatureMethod, optional): Method to calculate curvature. Defaults to CurvatureMethod.SQUARE.
+        resample_method (ResampleMethod, optional): Method to resample trajectory with. Defaults to ResampleMethod.MIN_DISTANCE.
+        resample_arg (Union[float, int], optional): Arg to pass to resampling method. Defaults to 0.1.
+
+    Raises:
+        NotImplementedError: If either the curvature or resampling method is invalid
+
+    Returns:
+        List[float]: Curvature over the entire resampled trajectory. Usually just passed
+        to a reduction function like np.mean or np.sum
+    """
+    
+    if resample_method == ResampleMethod.MIN_DISTANCE:
+        x, y = resample_trajectory_min_distance(ego, resample_arg)
+    elif resample_method == ResampleMethod.NUM_POINTS:
+        x, y = resample_trajectory(ego, resample_arg)
+    else:
+        raise NotImplementedError("Resample Method invalid")
+        
+    if curve_method == CurvatureMethod.SQUARE:
+        return __square_curvature(x, y)
+
+    elif curve_method == CurvatureMethod.FINITE_DIFFERENCE:
+        return __fdm_curvature(x, y)
+
+    else:
+        raise NotImplementedError("Curvature Method invalid")
 
 def curvature(ego: Agent):
     def angle(u1: np.array, u2: np.array) -> float:
