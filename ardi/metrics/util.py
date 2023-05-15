@@ -9,6 +9,21 @@ if TYPE_CHECKING:
 import numpy as np
 from scipy.interpolate import interp1d
 
+def resample_trajectory_min_distance(ego: Agent, point_distance: float):
+    # Calculate the cumulative distance over the entire trajectory
+    x = np.array([x.pos[0] for x in ego.positions])
+    y = np.array([x.pos[1] for x in ego.positions])
+
+    d = np.sqrt(np.diff(x) ** 2 + np.diff(y) ** 2)
+    cum_d = np.concatenate(([0], np.cumsum(d)))
+    dist_resampled = np.linspace(0, cum_d[-1], int(round(cum_d[-1] / point_distance)))
+
+    # Linearly interpolate over the distance
+    f_x = interp1d(cum_d, x)
+    f_y = interp1d(cum_d, y)
+
+    return f_x(dist_resampled), f_y(dist_resampled)
+
 
 def resample_trajectory(ego: Agent, num_samples: float) -> Tuple[np.array, np.array]:
     """Resample a trajectory for equally distant points
