@@ -54,7 +54,9 @@ def curvature(ego: Agent, curve_method: CurvatureMethod=CurvatureMethod.SQUARE,
     else:
         raise NotImplementedError("Curvature Method invalid")
 
-def curvature(ego: Agent):
+def __square_curvature(xs: np.array, ys: np.array) -> List[float]:
+    assert len(xs) == len(ys)
+
     def angle(u1: np.array, u2: np.array) -> float:
         result = np.clip(
             np.dot(u1, u2) / (np.linalg.norm(u1) * np.linalg.norm(u2)), -1, 1
@@ -63,12 +65,9 @@ def curvature(ego: Agent):
 
     curvatures = []
 
-    x, y = resample_trajectory(ego, len(ego.positions))
-    points = np.vstack((x, y)).T
-
-    for i in range(1, len(x) - 1):
-        u1 = points[i] - points[i - 1]
-        u2 = points[i + 1] - points[i]
+    for i in range(1, len(xs) - 1):
+        u1 = xs[i] - xs[i - 1]
+        u2 = ys[i + 1] - ys[i]
 
         deltaTheta = angle(u1, u2)
         curvatures.append(
@@ -78,17 +77,10 @@ def curvature(ego: Agent):
     return curvatures
 
 
-def curvature_fdm(ego: Agent):
-    """Calculates the curvature of a trajectory using the finite difference method
-
-    Args:
-        ego (Agent): Agent to calculate curvature of trajectory
-    """
-
-    x, y = resample_trajectory(ego, len(ego.positions))
-
-    dx = np.gradient(x)
-    dy = np.gradient(y)
+def __fdm_curvature(xs: np.array, ys: np.array) -> List[float]:
+    assert len(xs) == len(ys)
+    dx = np.gradient(xs)
+    dy = np.gradient(ys)
 
     ddx = np.gradient(dx)
     ddy = np.gradient(dy)
