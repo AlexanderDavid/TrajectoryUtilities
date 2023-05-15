@@ -1,6 +1,6 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING
-from typing import Union, List, Optional, Callable, Tuple
+from typing import Union, List, Optional, Callable
 from enum import Enum
 from .util import resample_trajectory, resample_trajectory_min_distance
 
