@@ -9,6 +9,11 @@ if TYPE_CHECKING:
 
 import numpy as np
 
+"""
+TODO: 
+[ ] Have the resampling functions spit out a new List[Position] rather than two numpy arrays
+"""
+
 class CurvatureMethod(Enum):
     SQUARE = 0
     FINITE_DIFFERENCE = 1
@@ -89,23 +94,29 @@ def __fdm_curvature(xs: np.array, ys: np.array) -> List[float]:
 
 
 def energy_efficiency(
-    ego: Agent, b: float = 2.25, c: float = 1, sum: bool = True
-) -> float:
-    es = []
-    ps = []
+    ego: Agent, b: float = 2.25, c: float = 1) -> List[float]:
+    """Calculate the energy efficiency of an agent as defined in
+    
+    Godoy, J., Karamouzas, I., Guy, S.J., Gini, M., 2014. Anytime
+    navigation with progressive hindsight optimization, in: 
+    IEEE/RSJ Int. Conf. on Intelligent Robots and Systems.
+
+    Args:
+        ego (Agent): Trajectory to calculate energy efficiency over
+        b (float, optional): Scaling factor for movement. Defaults to 2.25.
+        c (float, optional): Scaling factor for thinking. Defaults to 1.
+
+    Returns:
+        List[float]: Energy effieciencies at each timestep
+    """
     ees = []
     for pos in ego.positions:
         e = b + c * np.linalg.norm(pos.vel) ** 2
         p = np.dot(pos.vel, (ego.goal - pos.pos) / np.linalg.norm(ego.goal - pos.pos))
 
-        es.append(e)
-        ps.append(p)
         ees.append(p / e)
 
-    if sum:
-        return np.sum(ees)
-
-    return es, ps, ees
+    return ees
 
 
 def trajectory_regularity(ego: Agent) -> float:
