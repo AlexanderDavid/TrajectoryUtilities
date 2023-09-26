@@ -120,6 +120,16 @@ def energy_efficiency(
 
 
 def trajectory_regularity(ego: Agent) -> float:
+    """ Return the ratio of the ideal distance, or the distance as the crow
+    flies, and the actual distance (the sum of the norms of differences in position)
+    as a metric dealing with how much overhead there is in the path
+
+    Args:
+        ego (Agent): Agent to calculate over
+
+    Returns:
+        float: Distance overhead
+    """
     ideal_dist = np.linalg.norm(ego.goal - ego.start)
     actual_dist = np.sum(
         [

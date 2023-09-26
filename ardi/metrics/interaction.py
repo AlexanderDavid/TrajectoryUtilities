@@ -119,36 +119,13 @@ def ratio_ttc_violations(
     return percentage_violations(np.min(ttc_values, axis=0), alpha, beta)
 
 
-def ttcs(agent: Agent, others: List[Agent], do_min=True) -> List[float]:
-    if len(others) == 0:
-        return 0
-
-    others = sync_trajectories_in_time(agent, others)
-
-    mpd_values = np.array(
-        [
-            get_over_trajectory(
-                agent,
-                other,
-                lambda x, y: ttc(x, y, agent.radius + other.radius),
-                float("NaN"),
-            )
-            for other in others
-        ]
-    )
-
-    if do_min:
-        return np.min(mpd_values, axis=0)
-
-    return mpd_values.T
-
-
-def ttc(agent: Position, obstacle: Position, radius_sum: float) -> float:
+def ttc(agent: Position, obstacle: Position, radius_sum: float=0) -> float:
     """Calculate the Time to Collision for two agents
 
     Args:
         agent (Position): Current agent configuration
         obstacle (Position): Current obstacle configuration
+        radius_sum (float): Sum of the radii of both agents
 
     Returns:
         float: Time till collision assuming two agents keep their
@@ -203,6 +180,31 @@ def ttca(agent: Position, obstacle: Position) -> float:
 
     return -np.dot(p_o_a, v_o_a) / np.linalg.norm(v_o_a) ** 2
 
+def mpd(agent: Position, obstacle: Position) -> float:
+    """Calculate the projected minimum predicted distance between two agent's at a specified
+    timestep.
+
+
+    Args:
+        agent (Position): Ego agent
+        obstacle (Position): Other agent or obstacle
+
+    Returns:
+        float: Point-to-point minimum predicted distance
+    """
+    ttca_val = ttca(agent, obstacle)
+    p_o_a = obstacle.pos - agent.pos
+
+    if ttca_val < 0:
+        return np.linalg.norm(p_o_a)
+
+    v_o_a = obstacle.vel - agent.vel
+    dca = np.linalg.norm(p_o_a + max(0, ttca_val) * v_o_a)
+
+    return float(dca)
+
+def over_path(agent: Agent, others: List[Agent], do_min=True, func: Callable[[Position, Position], float]) -> List[float]:
+    pass
 
 def mpds(agent: Agent, others: List[Agent], do_min=True) -> List[float]:
     if len(others) == 0:
@@ -227,26 +229,25 @@ def mpds(agent: Agent, others: List[Agent], do_min=True) -> List[float]:
     
     return mpd_values.T
 
+def ttcs(agent: Agent, others: List[Agent], do_min=True) -> List[float]:
+    if len(others) == 0:
+        return 0
 
-def mpd(agent: Position, obstacle: Position) -> float:
-    """Calculate the projected minimum predicted distance between two agent's at a specified
-    timestep.
+    others = sync_trajectories_in_time(agent, others)
 
+    mpd_values = np.array(
+        [
+            get_over_trajectory(
+                agent,
+                other,
+                lambda x, y: ttc(x, y, agent.radius + other.radius),
+                float("NaN"),
+            )
+            for other in others
+        ]
+    )
 
-    Args:
-        agent (Position): Ego agent
-        obstacle (Position): Other agent or obstacle
+    if do_min:
+        return np.min(mpd_values, axis=0)
 
-    Returns:
-        float: Point-to-point minimum predicted distance
-    """
-    ttca_val = ttca(agent, obstacle)
-    p_o_a = obstacle.pos - agent.pos
-
-    if ttca_val < 0:
-        return np.linalg.norm(p_o_a)
-
-    v_o_a = obstacle.vel - agent.vel
-    dca = np.linalg.norm(p_o_a + max(0, ttca_val) * v_o_a)
-
-    return float(dca)
+    return mpd_values.T
